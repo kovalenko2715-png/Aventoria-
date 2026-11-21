@@ -7,9 +7,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../main.dart';
 import '../services/chat_service.dart';
 import '../services/player_repository.dart';
+import 'arena_screen.dart';
 import 'auction_screen.dart';
 import 'bosses_screen.dart';
 import 'chat_screen.dart';
+import 'guild_screen.dart';
 import 'inventory_screen.dart';
 import 'mail_screen.dart';
 import 'market_screen.dart';
@@ -92,6 +94,12 @@ class _MainScreenState extends State<MainScreen>
       case 'Боссы':
         push(const BossesScreen());
         return;
+      case 'Гильдия':
+        push(const GuildScreen());
+        return;
+      case 'Арена':
+        push(const ArenaScreen());
+        return;
       case 'Профиль':
         push(const ProfileScreen());
         return;
@@ -124,7 +132,7 @@ class _MainScreenState extends State<MainScreen>
         return;
     }
     setState(() {
-      _lastMessage = 'Система: $title — модуль переносится на следующем этапе';
+      _lastMessage = 'Система: $title — закрыто';
     });
   }
 

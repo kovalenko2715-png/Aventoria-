@@ -42,6 +42,7 @@ class PlayerRepository extends ChangeNotifier {
   int get rune => (data?['rune'] as num?)?.toInt() ?? 50;
   int get level => (data?['level'] as num?)?.toInt() ?? 1;
   String get name => data?['name'] as String? ?? 'Герой';
+  String? get uid => FirebaseAuth.instance.currentUser?.uid;
 
   Future<void> loadOrCreate(User user) async {
     final db = FirebaseFirestore.instance;

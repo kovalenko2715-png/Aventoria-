@@ -107,6 +107,14 @@ class _BattleScreenState extends State<BattleScreen> {
     await QuestState.instance.recordKillProgress(
         PlayerRepository.instance, widget.mob.id,
         kills: _engine.victory ? 1 : 0);
+    if (widget.mob.id.startsWith('pvp_') && _engine.victory) {
+      final pvpStats = Map<String, dynamic>.from(
+          PlayerRepository.instance.data?['stats_pvp'] as Map<String, dynamic>? ??
+              const {});
+      pvpStats['pvp_wins'] =
+          ((pvpStats['pvp_wins'] as num?)?.toInt() ?? 0) + 1;
+      await PlayerRepository.instance.replaceField('stats_pvp', pvpStats);
+    }
     final dropName = _engine.victory ? await _rollBossDrop() : null;
     if (!mounted) return;
     showDialog(
