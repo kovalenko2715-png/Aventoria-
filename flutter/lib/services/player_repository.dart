@@ -99,3 +99,88 @@ class PlayerRepository extends ChangeNotifier {
     });
   }
 }
+
+const int _expPerLevel = 300;
+
+class BattleRewardResult {
+  final int goldGained;
+  final int expGained;
+  final int levelBefore;
+  final int levelAfter;
+  final int statPointsGained;
+
+  const BattleRewardResult({
+    required this.goldGained,
+    required this.expGained,
+    required this.levelBefore,
+    required this.levelAfter,
+    required this.statPointsGained,
+  });
+
+  bool get leveledUp => levelAfter > levelBefore;
+}
+
+extension BattleRewards on PlayerRepository {
+  Future<BattleRewardResult> grantBattleRewards({
+    required int gold,
+    required int exp,
+    required bool victory,
+  }) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return const BattleRewardResult(
+          goldGained: 0,
+          expGained: 0,
+          levelBefore: 1,
+          levelAfter: 1,
+          statPointsGained: 0);
+    }
+    final db = FirebaseFirestore.instance;
+    final ref = db.collection('users').doc(uid);
+
+    final result = await db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = snap.data() ?? const {};
+      final levelBefore = (current['level'] as num?)?.toInt() ?? 1;
+      final oldExp = (current['exp'] as num?)?.toInt() ?? 0;
+      final newExp = oldExp + exp;
+      final levelAfter = 1 + newExp ~/ _expPerLevel;
+      final statGain = levelAfter > levelBefore ? (levelAfter - levelBefore) * 3 : 0;
+
+      tx.update(ref, {
+        'gold': FieldValue.increment(gold),
+        'exp': newExp,
+        'level': levelAfter,
+        'stat_points': FieldValue.increment(statGain),
+        'stats_pvp.monsters': FieldValue.increment(victory ? 1 : 0),
+        'stats_pvp.earned': FieldValue.increment(gold),
+      });
+
+      return BattleRewardResult(
+        goldGained: gold,
+        expGained: exp,
+        levelBefore: levelBefore,
+        levelAfter: levelAfter,
+        statPointsGained: statGain,
+      );
+    });
+
+    if (_data != null) {
+      final stats = Map<String, dynamic>.from(
+          _data!['stats_pvp'] as Map<String, dynamic>? ?? const {});
+      stats['monsters'] =
+          ((stats['monsters'] as num?)?.toInt() ?? 0) + (victory ? 1 : 0);
+      stats['earned'] = ((stats['earned'] as num?)?.toInt() ?? 0) + gold;
+      applyData({
+        ..._data!,
+        'gold': gold + ((_data!['gold'] as num?)?.toInt() ?? 0),
+        'exp': exp + ((_data!['exp'] as num?)?.toInt() ?? 0),
+        'level': result.levelAfter,
+        'stat_points': ((_data!['stat_points'] as num?)?.toInt() ?? 0) +
+            result.statPointsGained,
+        'stats_pvp': stats,
+      });
+    }
+    return result;
+  }
+}

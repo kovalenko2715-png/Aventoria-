@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../services/player_repository.dart';
+import 'monster_select_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -29,7 +30,15 @@ class _MainScreenState extends State<MainScreen> {
     if (mounted) setState(() => _loading = false);
   }
 
-  void _openModule(String title, IconData icon, Color color) {
+  void _openModule(String title, IconData icon, Color color,
+      {String id = ''}) {
+    if (id == 'bosses') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const MonsterSelectScreen()),
+      );
+      return;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$title — модуль переносится на следующем этапе'),
@@ -273,12 +282,21 @@ class ModuleCard extends StatelessWidget {
         leading: Icon(icon, color: color, size: 32),
         title: Text(title),
         trailing: const Icon(Icons.chevron_right),
-        onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$title — модуль переносится на следующем этапе'),
-            backgroundColor: kPanelColor,
-          ),
-        ),
+        onTap: () {
+          if (id == 'bosses') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MonsterSelectScreen()),
+            );
+            return;
+          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('$title — модуль переносится на следующем этапе'),
+              backgroundColor: kPanelColor,
+            ),
+          );
+        },
       ),
     );
   }
