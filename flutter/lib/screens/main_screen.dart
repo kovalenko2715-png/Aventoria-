@@ -5,10 +5,21 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../main.dart';
+import '../services/chat_service.dart';
 import '../services/player_repository.dart';
+import 'auction_screen.dart';
+import 'bosses_screen.dart';
+import 'chat_screen.dart';
+import 'inventory_screen.dart';
+import 'mail_screen.dart';
+import 'market_screen.dart';
+import 'map_screen.dart';
 import 'monster_select_screen.dart';
+import 'profile_screen.dart';
+import 'quests_screen.dart';
+import 'settings_screen.dart';
+import 'tavern_screen.dart';
 
-const kRuneBlue = Color(0xFF80CCFF);
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -31,6 +42,7 @@ class _MainScreenState extends State<MainScreen>
   void initState() {
     super.initState();
     _initPlayer();
+    ChatService.instance.startHeartbeat();
     _runePulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -45,6 +57,7 @@ class _MainScreenState extends State<MainScreen>
   void dispose() {
     _clockTimer?.cancel();
     _runePulse.dispose();
+    ChatService.instance.stopHeartbeat();
     super.dispose();
   }
 
@@ -63,12 +76,52 @@ class _MainScreenState extends State<MainScreen>
   }
 
   void _openModule(String title, {bool isBattles = false}) {
-    if (isBattles) {
-      Navigator.push(
+    Future<void> push(Widget screen) async {
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const MonsterSelectScreen()),
+        MaterialPageRoute(builder: (_) => screen),
       );
-      return;
+      if (mounted) setState(() {});
+    }
+
+    switch (title) {
+      case 'battles':
+      case 'Боссы и монстры':
+        push(const MonsterSelectScreen());
+        return;
+      case 'Боссы':
+        push(const BossesScreen());
+        return;
+      case 'Профиль':
+        push(const ProfileScreen());
+        return;
+      case 'Таверна':
+        push(const TavernScreen());
+        return;
+      case 'Задания':
+        push(const QuestsScreen());
+        return;
+      case 'Карта':
+        push(const MapScreen());
+        return;
+      case 'Лавка':
+        push(const MarketScreen());
+        return;
+      case 'Аукцион':
+        push(const AuctionScreen());
+        return;
+      case 'Рюкзак':
+        push(const InventoryScreen());
+        return;
+      case 'Почта':
+        push(const MailScreen());
+        return;
+      case 'Чат':
+        push(const ChatScreen());
+        return;
+      case 'Настройки':
+        push(const SettingsScreen());
+        return;
     }
     setState(() {
       _lastMessage = 'Система: $title — модуль переносится на следующем этапе';
@@ -275,11 +328,7 @@ class _MainScreenState extends State<MainScreen>
               nb('Гильдия', onTap: () => _openModule('Гильдия')),
               nb('Таверна', onTap: () => _openModule('Таверна')),
               nb('💰Лавка', onTap: () => _openModule('Лавка')),
-              nb('Боссы', onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const MonsterSelectScreen()),
-                  )),
+              nb('Боссы', onTap: () => _openModule('Боссы')),
               nb('🗺️ Карта', onTap: () => _openModule('Карта')),
             ],
           ),
@@ -295,9 +344,15 @@ class _MainScreenState extends State<MainScreen>
                 ),
               ),
               nb('Чат', onTap: () => _openModule('Чат')),
-              const Text('Онлайн 1',
-                  style: TextStyle(
-                      color: kGoldColor, fontSize: 13)),
+              StreamBuilder<int>(
+                stream: ChatService.instance.onlineCount(),
+                builder: (context, snap) {
+                  final online = snap.data ?? 1;
+                  return Text('Онлайн $online',
+                      style: const TextStyle(
+                          color: kGoldColor, fontSize: 13));
+                },
+              ),
             ],
           ),
         ],

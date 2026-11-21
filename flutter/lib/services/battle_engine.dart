@@ -331,3 +331,26 @@ class BattleEngine extends ChangeNotifier {
     notifyListeners();
   }
 }
+
+MobDef mobFromBoss(String id, Map<String, dynamic> boss) {
+  final atkMin = (boss['attack_min'] as num?)?.toInt() ?? 10;
+  final atkMax = (boss['attack_max'] as num?)?.toInt() ?? 20;
+  final rewards = boss['rewards'] as Map<dynamic, dynamic>? ?? const {};
+  final exp = (rewards['exp'] as num?)?.toInt() ?? 0;
+  final gold = (rewards['gold'] as num?)?.toInt() ?? 0;
+  return MobDef(
+    'boss_$id',
+    boss['name']?.toString() ?? id,
+    boss['icon']?.toString() ?? '💀',
+    level: (boss['level'] as num?)?.toInt() ?? 1,
+    hp: (boss['hp'] as num?)?.toInt() ?? 100,
+    strength: atkMax ~/ 2,
+    agility: 10,
+    defense: (boss['defense'] as num?)?.toInt() ?? 10,
+    attack: (atkMin + atkMax) ~/ 2,
+    goldMin: gold,
+    goldMax: gold,
+    expMin: exp,
+    expMax: exp,
+  );
+}

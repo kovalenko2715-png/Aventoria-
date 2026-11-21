@@ -1,8 +1,12 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
+import '../data/game_data.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
 import '../services/player_repository.dart';
+import '../services/quest_service.dart';
 
 class BattleScreen extends StatefulWidget {
   final MobDef mob;
@@ -54,11 +58,56 @@ class _BattleScreenState extends State<BattleScreen> {
     if (mounted) setState(() {});
   }
 
+  Map<String, dynamic>? get _bossDef {
+    final id = widget.mob.id;
+    if (!id.startsWith('boss_')) return null;
+    final short = id.substring(5);
+    for (final db in [bossesDungeon, bossesWorld, bossesEvent]) {
+      final def = db[short] as Map<String, dynamic>?;
+      if (def != null) return def;
+    }
+    return null;
+  }
+
+  Future<String?> _rollBossDrop() async {
+    final boss = _bossDef;
+    final player = PlayerRepository.instance;
+    if (boss != null) {
+      final pvp = Map<String, dynamic>.from(
+          player.data?['stats_pvp'] as Map<String, dynamic>? ?? const {});
+      pvp['bosses'] = ((pvp['bosses'] as num?)?.toInt() ?? 0) + 1;
+      await player.replaceField('stats_pvp', pvp);
+      for (final drop in (boss['drops'] as List<dynamic>? ?? const [])) {
+        final chance = ((drop as Map<String, dynamic>)['chance'] as num?)?.toInt() ?? 0;
+        if (Random().nextInt(100) < chance) {
+          await player.addInventoryItem({
+            'id': drop['item'],
+            'icon': drop['icon'] ?? '🎁',
+            'name': drop['name'],
+            'level': boss['level'] ?? 1,
+            'type': 'material',
+            'description': 'Трофей босса ${boss['name']}.',
+            'durability': 100,
+            'price': chance * 10,
+            'requirements': const {},
+            'bonuses': const {},
+          });
+          return drop['name']?.toString();
+        }
+      }
+    }
+    return null;
+  }
+
   Future<void> _grantRewards() async {
     final exp = _engine.victory ? _engine.expReward : (_engine.expReward ~/ 5);
     final gold = _engine.victory ? _engine.goldReward : 0;
     final result = await PlayerRepository.instance
         .grantBattleRewards(gold: gold, exp: exp, victory: _engine.victory);
+    await QuestState.instance.recordKillProgress(
+        PlayerRepository.instance, widget.mob.id,
+        kills: _engine.victory ? 1 : 0);
+    final dropName = _engine.victory ? await _rollBossDrop() : null;
     if (!mounted) return;
     showDialog(
       context: context,
@@ -83,6 +132,10 @@ class _BattleScreenState extends State<BattleScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (dropName != null) ...[
+              _rewardRow('🎁 Трофей: $dropName!'),
+              const SizedBox(height: 4),
+            ],
             if (_engine.victory) ...[
               _rewardRow('💰 Золото: +${result.goldGained}'),
               _rewardRow('⭐ Опыт: +${result.expGained}'),

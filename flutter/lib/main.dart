@@ -7,6 +7,7 @@ import 'screens/main_screen.dart';
 import 'services/audio_manager.dart';
 
 const kGoldColor = Color(0xFFFFD700);
+const kRuneBlue = Color(0xFF80CCFF);
 const kDarkBackground = Color(0xFF151515);
 const kPanelColor = Color(0xFF1E1E1E);
 

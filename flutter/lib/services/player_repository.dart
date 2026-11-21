@@ -98,6 +98,93 @@ class PlayerRepository extends ChangeNotifier {
       key: value,
     });
   }
+
+  List<dynamic> get inventory =>
+      (data?['inventory'] as List<dynamic>?) ?? <dynamic>[];
+
+  Map<String, dynamic> get statsMap =>
+      (data?['stats'] as Map<String, dynamic>?) ?? const {};
+
+  Future<bool> spendCurrency({required int gold, required int rune}) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    final ref = FirebaseFirestore.instance.collection('users').doc(uid);
+    final ok = await FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = snap.data() ?? const {};
+      final haveGold = (current['gold'] as num?)?.toInt() ?? 0;
+      final haveRune = (current['rune'] as num?)?.toInt() ?? 0;
+      if (haveGold < gold || haveRune < rune) return false;
+      tx.update(ref, {
+        'gold': FieldValue.increment(-gold),
+        'rune': FieldValue.increment(-rune),
+      });
+      return true;
+    });
+    if (!ok) return false;
+    if (_data != null) {
+      applyData({
+        ..._data!,
+        'gold': ((_data!['gold'] as num?)?.toInt() ?? 0) - gold,
+        'rune': ((_data!['rune'] as num?)?.toInt() ?? 0) - rune,
+      });
+    }
+    return true;
+  }
+
+  Future<bool> spendStatPoint(String stat) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return false;
+    final ref = FirebaseFirestore.instance.collection('users').doc(uid);
+    final ok = await FirebaseFirestore.instance.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      final current = snap.data() ?? const {};
+      final points = (current['stat_points'] as num?)?.toInt() ?? 0;
+      if (points <= 0) return false;
+      tx.update(ref, {
+        'stat_points': FieldValue.increment(-1),
+        'stats.$stat': FieldValue.increment(1),
+      });
+      return true;
+    });
+    if (!ok) return false;
+    if (_data != null) {
+      final stats = Map<String, dynamic>.from(
+          _data!['stats'] as Map<String, dynamic>? ?? const {});
+      stats[stat] = ((stats[stat] as num?)?.toInt() ?? 0) + 1;
+      applyData({
+        ..._data!,
+        'stats': stats,
+        'stat_points': ((_data!['stat_points'] as num?)?.toInt() ?? 0) - 1,
+      });
+    }
+    return true;
+  }
+
+  Future<void> addInventoryItem(Map<String, dynamic> instance) async {
+    final inv = List<dynamic>.from(inventory)..add(instance);
+    _data = {...?_data, 'inventory': inv};
+    notifyListeners();
+    await updateField('inventory', inv);
+  }
+
+  Future<void> replaceInventory(List<dynamic> newInventory) async {
+    _data = {...?_data, 'inventory': newInventory};
+    notifyListeners();
+    await updateField('inventory', newInventory);
+  }
+
+  Future<void> replaceEquipment(Map<String, dynamic> equipment) async {
+    _data = {...?_data, 'equipment': equipment};
+    notifyListeners();
+    await updateField('equipment', equipment);
+  }
+
+  Future<void> replaceField(String key, Object value) async {
+    _data = {...?_data, key: value};
+    notifyListeners();
+    await updateField(key, value);
+  }
 }
 
 const int _expPerLevel = 300;
