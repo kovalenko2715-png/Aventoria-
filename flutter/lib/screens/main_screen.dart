@@ -98,19 +98,23 @@ class _MainScreenState extends State<MainScreen>
             final w = constraints.maxWidth;
             return Stack(
               children: [
-                _topBar(),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: _topBar(),
+                ),
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
-                  top: h * 0.13,
-                  bottom: h * 0.30,
+                  top: 76,
+                  bottom: 116,
                   child: _contentArea(),
                 ),
                 Positioned(
                   left: w * 0.10,
                   right: w * 0.10,
-                  top: h * 0.85,
-                  bottom: h * 0.05,
+                  bottom: 8,
                   child: _bottomNav(),
                 ),
                 if (_burgerOpen) _burgerPanel(w, h),
@@ -131,70 +135,58 @@ class _MainScreenState extends State<MainScreen>
         : (email.contains('@') ? email.split('@').first : 'Игрок');
     return Container(
       color: const Color(0xB31A1A1A),
-      height: double.infinity,
+      height: 64,
+      alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: SafeArea(
         bottom: false,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return Row(
-              children: [
-                Image.asset('assets/images/ui/gold_icon.png',
-                    width: 28, height: 28),
-                const SizedBox(width: 4),
-                const Text('Золото',
-                    style: TextStyle(
-                        color: kGoldColor,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(width: 4),
-                Text('$gold',
-                    style: const TextStyle(
-                        color: kGoldColor, fontSize: 16)),
-                const Spacer(),
-                ConstrainedBox(
-                  constraints:
-                      const BoxConstraints(maxWidth: 90),
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      name,
-                      style: const TextStyle(
-                          color: Colors.white, fontSize: 15),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Center(
-                    child: Text('AVENTORIA',
-                        style: TextStyle(
-                            color: kGoldColor,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2)),
-                  ),
-                ),
-                Text(_timeString,
+        child: Row(
+          children: [
+            Image.asset('assets/images/ui/gold_icon.png',
+                width: 28, height: 28),
+            const SizedBox(width: 4),
+            const Text('Золото',
+                style: TextStyle(
+                    color: kGoldColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600)),
+            const SizedBox(width: 4),
+            Text('$gold',
+                style:
+                    const TextStyle(color: kGoldColor, fontSize: 16)),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 90),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(name,
                     style: const TextStyle(
                         color: Colors.white, fontSize: 15)),
-                const SizedBox(width: 10),
-                Text('$rune',
-                    style: const TextStyle(
-                        color: kRuneBlue, fontSize: 16)),
-                Image.asset('assets/images/ui/rune_icon.png',
-                    width: 28, height: 28),
-                const SizedBox(width: 4),
-                FadeTransition(
-                  opacity: Tween<double>(begin: 0.75, end: 1.0)
-                      .animate(curvedPulse),
-                  child: const Text('Забытые руны',
-                      style:
-                          TextStyle(color: kRuneBlue, fontSize: 12)),
-                ),
-              ],
-            );
-          },
+              ),
+            ),
+            const Expanded(
+              child: Center(
+                child: Text('AVENTORIA',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: kGoldColor,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2)),
+              ),
+            ),
+            Text(_timeString,
+                style: const TextStyle(color: Colors.white, fontSize: 15)),
+            const SizedBox(width: 10),
+            Text('$rune',
+                style: const TextStyle(color: kRuneBlue, fontSize: 16)),
+            const SizedBox(width: 2),
+            FadeTransition(
+              opacity: curvedPulse,
+              child: Image.asset('assets/images/ui/rune_icon.png',
+                  width: 26, height: 26),
+            ),
+            const SizedBox(width: 4),
+          ],
         ),
       ),
     );
