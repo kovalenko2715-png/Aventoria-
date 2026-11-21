@@ -1,0 +1,145 @@
+[gd_scene format=3 uid="uid://2gasx8t1f5cs"]
+
+[ext_resource type="Script" uid="uid://dhbutl7imq6is" path="res://modules/settings.gd" id="1_xc4ey"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2gllm"]
+bg_color = Color(0.1, 0.1, 0.1, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 0.2)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="Settings" type="Panel" unique_id=1231947985]
+anchors_preset = -1
+anchor_left = 0.2
+anchor_top = 0.15
+anchor_right = 0.8
+anchor_bottom = 0.85
+theme_override_styles/panel = SubResource("StyleBoxFlat_2gllm")
+script = ExtResource("1_xc4ey")
+
+[node name="CloseBtn" type="Button" parent="." unique_id=26660986]
+layout_mode = 0
+anchor_left = 0.95
+anchor_right = 1.0
+anchor_bottom = 0.05
+text = "×"
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1034369480]
+layout_mode = 0
+anchor_left = 0.05
+anchor_top = 0.1
+anchor_right = 0.95
+anchor_bottom = 0.95
+
+[node name="@Label@26375" type="Label" parent="VBox" unique_id=1288324565]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "НАСТРОЙКИ"
+horizontal_alignment = 1
+
+[node name="@HSeparator@26376" type="HSeparator" parent="VBox" unique_id=1160061370]
+modulate = Color(1, 1, 1, 0.2)
+layout_mode = 2
+
+[node name="@Label@26377" type="Label" parent="VBox" unique_id=154143829]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "ЗВУК"
+
+[node name="MusicToggle" type="HBoxContainer" parent="VBox" unique_id=41432246]
+layout_mode = 2
+
+[node name="@Label@26378" type="Label" parent="VBox/MusicToggle" unique_id=1832157044]
+layout_mode = 2
+text = "Музыка"
+
+[node name="Btn" type="Button" parent="VBox/MusicToggle" unique_id=444698584]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Вкл"
+
+[node name="MusicSlider" type="HBoxContainer" parent="VBox" unique_id=644929403]
+layout_mode = 2
+
+[node name="@Label@26379" type="Label" parent="VBox/MusicSlider" unique_id=1856746627]
+layout_mode = 2
+text = "Громкость"
+
+[node name="HSlider" type="HSlider" parent="VBox/MusicSlider" unique_id=1007308411]
+layout_mode = 2
+size_flags_horizontal = 3
+value = 80.0
+
+[node name="ValueLabel" type="Label" parent="VBox/MusicSlider" unique_id=289997015]
+layout_mode = 2
+text = "80"
+
+[node name="@Label@26380" type="Label" parent="VBox" unique_id=2076819853]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "ЧАТ"
+
+[node name="FontSize" type="HBoxContainer" parent="VBox" unique_id=1591391151]
+layout_mode = 2
+
+[node name="@Label@26381" type="Label" parent="VBox/FontSize" unique_id=1490040283]
+layout_mode = 2
+text = "Размер шрифта"
+
+[node name="SmallBtn" type="Button" parent="VBox/FontSize" unique_id=673312560]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Маленький"
+
+[node name="MediumBtn" type="Button" parent="VBox/FontSize" unique_id=2000295822]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Средний"
+
+[node name="LargeBtn" type="Button" parent="VBox/FontSize" unique_id=86107008]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Большой"
+
+[node name="@Label@26382" type="Label" parent="VBox" unique_id=1823855678]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "АККАУНТ"
+
+[node name="ChangePass" type="HBoxContainer" parent="VBox" unique_id=2134240227]
+layout_mode = 2
+
+[node name="Btn" type="Button" parent="VBox/ChangePass" unique_id=1610699383]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Сменить пароль"
+
+[node name="ChangeSkin" type="HBoxContainer" parent="VBox" unique_id=1601113701]
+layout_mode = 2
+
+[node name="Btn" type="Button" parent="VBox/ChangeSkin" unique_id=1783821756]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Сменить облик"
+
+[node name="Logout" type="HBoxContainer" parent="VBox" unique_id=1960061632]
+layout_mode = 2
+
+[node name="Btn" type="Button" parent="VBox/Logout" unique_id=1051427081]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Выйти из аккаунта"
+
+[node name="@Control@26383" type="Control" parent="VBox" unique_id=1451333241]
+layout_mode = 2
+size_flags_vertical = 3

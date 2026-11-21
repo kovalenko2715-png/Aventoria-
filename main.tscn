@@ -1,0 +1,238 @@
+[gd_scene format=3 uid="uid://d4gdk7w7l7pmn"]
+
+[ext_resource type="Texture2D" uid="uid://4q6qpogdr5g0" path="res://assets/images/ui/gold_icon.png" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://f32pakm0fg6t" path="res://scripts/main.gd" id="1_ig7tw"]
+[ext_resource type="Texture2D" uid="uid://b7caoy3c37w8f" path="res://assets/images/ui/rune_icon.png" id="2_h2yge"]
+
+[node name="Main" type="Control" unique_id=1887217637]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_ig7tw")
+metadata/_edit_vertical_guides_ = [-278.0]
+
+[node name="Background" type="TextureRect" parent="." unique_id=153815113]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="TopBar" type="ColorRect" parent="." unique_id=1710623465]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 0.12
+color = Color(0.1, 0.1, 0.1, 0.7)
+
+[node name="TopContainer" type="HBoxContainer" parent="TopBar" unique_id=1797517720]
+layout_mode = 0
+anchor_left = 0.02
+anchor_right = 0.98
+anchor_bottom = 1.0
+alignment = 1
+
+[node name="Gold" type="HBoxContainer" parent="TopBar/TopContainer" unique_id=1033173280]
+layout_mode = 2
+alignment = 1
+
+[node name="GoldText" type="Label" parent="TopBar/TopContainer/Gold" unique_id=1100774382]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "Золото"
+
+[node name="GoldIcon" type="TextureRect" parent="TopBar/TopContainer/Gold" unique_id=2104077644]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+texture = ExtResource("1_0xm2m")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="GoldLabel" type="Label" parent="TopBar/TopContainer/Gold" unique_id=1966868373]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 20
+text = "1000"
+
+[node name="@Control@31716" type="Control" parent="TopBar/TopContainer" unique_id=1454576481]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="PlayerName" type="Label" parent="TopBar/TopContainer" unique_id=1723294160]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Ник-Игрок123"
+
+[node name="@Control@31717" type="Control" parent="TopBar/TopContainer" unique_id=2137127086]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="GameLogo" type="Label" parent="TopBar/TopContainer" unique_id=709798820]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "AVENTORIA"
+horizontal_alignment = 1
+
+[node name="@Control@31718" type="Control" parent="TopBar/TopContainer" unique_id=343054982]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="TimeLabel" type="Label" parent="TopBar/TopContainer" unique_id=142465618]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "14:45"
+
+[node name="@Control@31719" type="Control" parent="TopBar/TopContainer" unique_id=51063375]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="Rune" type="HBoxContainer" parent="TopBar/TopContainer" unique_id=325498316]
+layout_mode = 2
+alignment = 1
+
+[node name="RuneLabel" type="Label" parent="TopBar/TopContainer/Rune" unique_id=1383543591]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "50"
+
+[node name="RuneIcon" type="TextureRect" parent="TopBar/TopContainer/Rune" unique_id=1442795809]
+custom_minimum_size = Vector2(64, 64)
+layout_mode = 2
+texture = ExtResource("2_h2yge")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RuneText" type="Label" parent="TopBar/TopContainer/Rune" unique_id=1704366226]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.8, 1, 1)
+theme_override_font_sizes/font_size = 18
+text = "Забытые руны"
+
+[node name="Content" type="Control" parent="." unique_id=1970258512]
+anchors_preset = 0
+anchor_left = 0.05
+anchor_top = 0.12
+anchor_right = 0.95
+anchor_bottom = 0.7
+
+[node name="BottomNav" type="HBoxContainer" parent="." unique_id=242633586]
+layout_mode = 0
+anchor_left = 0.1
+anchor_top = 0.85
+anchor_right = 0.9
+anchor_bottom = 0.95
+alignment = 1
+
+[node name="BurgerBtn" type="Button" parent="BottomNav" unique_id=511801172]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "≡ Меню"
+
+[node name="GuildBtn" type="Button" parent="BottomNav" unique_id=999629065]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "🏛️ Гильдия"
+
+[node name="TavernBtn" type="Button" parent="BottomNav" unique_id=249073359]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "🍺 Таверна"
+
+[node name="MarketBtn" type="Button" parent="BottomNav" unique_id=389432186]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "💰Лавка"
+
+[node name="BossBtn" type="Button" parent="BottomNav" unique_id=1173491327]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "🍻 Боссы"
+
+[node name="MapBtn" type="Button" parent="BottomNav" unique_id=423800103]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+text = "🗺️ Карта"
+
+[node name="LastMessage" type="Label" parent="BottomNav" unique_id=1474008769]
+custom_minimum_size = Vector2(250, 30)
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+text = "Система: Добро пожаловать в Aventoria!"
+
+[node name="ChatBtn" type="Button" parent="BottomNav" unique_id=1501669499]
+custom_minimum_size = Vector2(60, 30)
+layout_mode = 2
+size_flags_horizontal = 4
+text = "Чат"
+
+[node name="OnlineContainer" type="HBoxContainer" parent="BottomNav" unique_id=1955163555]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="@Control@31720" type="Control" parent="BottomNav/OnlineContainer" unique_id=1073835248]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OnlineText" type="Label" parent="BottomNav/OnlineContainer" unique_id=1585951752]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 18
+text = "Онлайн 10"
+
+[node name="BurgerMenu" type="VBoxContainer" parent="." unique_id=1866653302]
+visible = false
+layout_mode = 0
+anchor_left = 0.1
+anchor_top = 0.5
+anchor_right = 0.35
+anchor_bottom = 0.8
+
+[node name="ProfileBtn" type="Button" parent="BurgerMenu" unique_id=1786086204]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Профиль"
+alignment = 0
+
+[node name="CraftBtn" type="Button" parent="BurgerMenu" unique_id=747678044]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Кузница"
+alignment = 0
+
+[node name="InventoryBtn" type="Button" parent="BurgerMenu" unique_id=1056276536]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Рюкзак"
+alignment = 0
+
+[node name="AuctionBtn" type="Button" parent="BurgerMenu" unique_id=1647040474]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Аукцион"
+alignment = 0
+
+[node name="QuestsBtn" type="Button" parent="BurgerMenu" unique_id=1437229343]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Задания"
+alignment = 0
+
+[node name="MailBtn" type="Button" parent="BurgerMenu" unique_id=379166332]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Почта"
+alignment = 0
+
+[node name="SettingsBtn" type="Button" parent="BurgerMenu" unique_id=18462872]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Настройки"
+alignment = 0

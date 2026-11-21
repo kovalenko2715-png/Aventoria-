@@ -1,0 +1,785 @@
+[gd_scene format=3 uid="uid://i3dsowqyiqws"]
+
+[ext_resource type="Script" path="res://modules/profile.gd" id="1_53mnx"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_g0y1t"]
+bg_color = Color(0.1, 0.1, 0.1, 0.95)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 0.84, 0, 0.3)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_5fhf5"]
+bg_color = Color(0.3, 0.3, 0.3, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.84, 0, 0.8)
+corner_radius_top_left = 3
+corner_radius_top_right = 3
+corner_radius_bottom_right = 3
+corner_radius_bottom_left = 3
+
+[node name="Profile" type="Panel" unique_id=16963190]
+anchor_left = 0.1
+anchor_top = 0.05
+anchor_right = 0.9
+anchor_bottom = 0.95
+theme_override_styles/panel = SubResource("StyleBoxFlat_g0y1t")
+script = ExtResource("1_53mnx")
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=84415447]
+layout_mode = 0
+anchor_left = 0.02
+anchor_top = 0.02
+anchor_right = 0.98
+anchor_bottom = 0.98
+
+[node name="TopPanel" type="HBoxContainer" parent="VBox" unique_id=329146865]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="@Label@20552" type="Label" parent="VBox/TopPanel" unique_id=1186619606]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 24
+text = "ПРОФИЛЬ ИГРОКА"
+horizontal_alignment = 1
+
+[node name="CloseBtn" type="Button" parent="VBox/TopPanel" unique_id=495928954]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+text = "×"
+
+[node name="TopBar" type="HBoxContainer" parent="VBox" unique_id=1821691374]
+layout_mode = 2
+alignment = 1
+
+[node name="@HBoxContainer@20553" type="HBoxContainer" parent="VBox/TopBar" unique_id=187813361]
+layout_mode = 2
+
+[node name="@Label@20554" type="Label" parent="VBox/TopBar/@HBoxContainer@20553" unique_id=1286961652]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🎚️"
+
+[node name="@Label@20555" type="Label" parent="VBox/TopBar/@HBoxContainer@20553" unique_id=1794322354]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Уровень:"
+
+[node name="LevelValue" type="Label" parent="VBox/TopBar/@HBoxContainer@20553" unique_id=382376751]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "37"
+
+[node name="@Control@20556" type="Control" parent="VBox/TopBar" unique_id=403778059]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="@HBoxContainer@20557" type="HBoxContainer" parent="VBox/TopBar" unique_id=2131874569]
+layout_mode = 2
+
+[node name="@Label@20558" type="Label" parent="VBox/TopBar/@HBoxContainer@20557" unique_id=1736874561]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "❤️"
+
+[node name="@Label@20559" type="Label" parent="VBox/TopBar/@HBoxContainer@20557" unique_id=423220083]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "HP:"
+
+[node name="HPValue" type="Label" parent="VBox/TopBar/@HBoxContainer@20557" unique_id=952632406]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 14
+text = "575/575"
+
+[node name="@Control@20560" type="Control" parent="VBox/TopBar" unique_id=605435043]
+custom_minimum_size = Vector2(20, 0)
+layout_mode = 2
+
+[node name="@HBoxContainer@20561" type="HBoxContainer" parent="VBox/TopBar" unique_id=234963232]
+layout_mode = 2
+
+[node name="@Label@20562" type="Label" parent="VBox/TopBar/@HBoxContainer@20561" unique_id=131709986]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "🔮"
+
+[node name="@Label@20563" type="Label" parent="VBox/TopBar/@HBoxContainer@20561" unique_id=1118553266]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Мана:"
+
+[node name="ManaValue" type="Label" parent="VBox/TopBar/@HBoxContainer@20561" unique_id=970052774]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3, 0.6, 1, 1)
+theme_override_font_sizes/font_size = 14
+text = "220/220"
+
+[node name="MainContent" type="HBoxContainer" parent="VBox" unique_id=31412507]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="LeftColumn" type="VBoxContainer" parent="VBox/MainContent" unique_id=1455518873]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatsSection" type="VBoxContainer" parent="VBox/MainContent/LeftColumn" unique_id=1470701268]
+layout_mode = 2
+
+[node name="@Label@20564" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1149046282]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "ХАРАКТЕРИСТИКИ"
+horizontal_alignment = 1
+
+[node name="@HBoxContainer@20565" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1542937573]
+layout_mode = 2
+
+[node name="@Label@20566" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/@HBoxContainer@20565" unique_id=473909242]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⭐ Свободные очки:"
+
+[node name="StatPointsValue" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/@HBoxContainer@20565" unique_id=1174620812]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "5"
+
+[node name="@Control@20567" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/@HBoxContainer@20565" unique_id=1897741738]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="@HSeparator@20568" type="HSeparator" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1042011811]
+modulate = Color(1, 0.84, 0, 0.3)
+layout_mode = 2
+
+[node name="Strength" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1097111859]
+layout_mode = 2
+
+[node name="@Label@20569" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Strength" unique_id=778581603]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💪 Сила:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Strength" unique_id=664766181]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "25"
+
+[node name="@Control@20570" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Strength" unique_id=108115277]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Strength" unique_id=665835801]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Agility" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=989120966]
+layout_mode = 2
+
+[node name="@Label@20571" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Agility" unique_id=1218420788]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🎯 Ловкость:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Agility" unique_id=581121931]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "50"
+
+[node name="@Control@20572" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Agility" unique_id=942894878]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Agility" unique_id=1628582996]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Intuition" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1432042190]
+layout_mode = 2
+
+[node name="@Label@20573" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Intuition" unique_id=1848482491]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🧠 Интуиция:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Intuition" unique_id=2144804645]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "10"
+
+[node name="@Control@20574" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Intuition" unique_id=1857988343]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Intuition" unique_id=1081911067]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Endurance" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1227593701]
+layout_mode = 2
+
+[node name="@Label@20575" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Endurance" unique_id=1493342941]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "❤️ Выносливость:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Endurance" unique_id=413283859]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "75"
+
+[node name="@Control@20576" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Endurance" unique_id=699332991]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Endurance" unique_id=630950214]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Intellect" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=244714540]
+layout_mode = 2
+
+[node name="@Label@20577" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Intellect" unique_id=226854306]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🔮 Интеллект:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Intellect" unique_id=1958774270]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "30"
+
+[node name="@Control@20578" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Intellect" unique_id=1913157320]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Intellect" unique_id=1866813174]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Wisdom" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=342568950]
+layout_mode = 2
+
+[node name="@Label@20579" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Wisdom" unique_id=344596699]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "📿 Мудрость:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Wisdom" unique_id=2069470449]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "40"
+
+[node name="@Control@20580" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Wisdom" unique_id=430037548]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Wisdom" unique_id=791873691]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="Spirit" type="HBoxContainer" parent="VBox/MainContent/LeftColumn/StatsSection" unique_id=1819396546]
+layout_mode = 2
+
+[node name="@Label@20581" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Spirit" unique_id=285595505]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "✨ Духовность:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/LeftColumn/StatsSection/Spirit" unique_id=268463181]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "15"
+
+[node name="@Control@20582" type="Control" parent="VBox/MainContent/LeftColumn/StatsSection/Spirit" unique_id=1565863535]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Plus" type="Button" parent="VBox/MainContent/LeftColumn/StatsSection/Spirit" unique_id=1045932603]
+custom_minimum_size = Vector2(30, 25)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_5fhf5")
+text = "+"
+
+[node name="MiddleColumn" type="VBoxContainer" parent="VBox/MainContent" unique_id=921858724]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PassivesSection" type="VBoxContainer" parent="VBox/MainContent/MiddleColumn" unique_id=666367453]
+layout_mode = 2
+
+[node name="@Label@20583" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=2067454140]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "ПАССИВНЫЕ"
+horizontal_alignment = 1
+
+[node name="Attack" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=1657926673]
+layout_mode = 2
+
+[node name="@Label@20584" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Attack" unique_id=1167265573]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⚔️ Атака:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Attack" unique_id=369585471]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "150"
+
+[node name="@Control@20585" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/Attack" unique_id=1217772753]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Defense" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=1305031157]
+layout_mode = 2
+
+[node name="@Label@20586" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Defense" unique_id=639876263]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🛡️ Защита:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Defense" unique_id=1842758692]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "125"
+
+[node name="@Control@20587" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/Defense" unique_id=1067823910]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HP" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=1893975155]
+layout_mode = 2
+
+[node name="@Label@20588" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/HP" unique_id=1308606107]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "❤️ НР:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/HP" unique_id=623812324]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "575/575"
+
+[node name="@Control@20589" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/HP" unique_id=2012480895]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Mana" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=405153850]
+layout_mode = 2
+
+[node name="@Label@20590" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Mana" unique_id=904732743]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🔮 Мана:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Mana" unique_id=681308175]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "220/220"
+
+[node name="@Control@20591" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/Mana" unique_id=2077860080]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CritChance" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=872868521]
+layout_mode = 2
+
+[node name="@Label@20592" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritChance" unique_id=1459035382]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🎯 Шанс крита:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritChance" unique_id=727338182]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "30%"
+
+[node name="@Control@20593" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritChance" unique_id=1350208921]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CritDamage" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=1251735298]
+layout_mode = 2
+
+[node name="@Label@20594" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritDamage" unique_id=1477729502]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💥 Крит.урон:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritDamage" unique_id=105015852]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "160%"
+
+[node name="@Control@20595" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/CritDamage" unique_id=2043594458]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Evasion" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=726006202]
+layout_mode = 2
+
+[node name="@Label@20596" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Evasion" unique_id=1238735784]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🌀 Уклонение:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/Evasion" unique_id=759274197]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "30%"
+
+[node name="@Control@20597" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/Evasion" unique_id=722040556]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="MagicFind" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/PassivesSection" unique_id=1379783206]
+layout_mode = 2
+
+[node name="@Label@20598" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/MagicFind" unique_id=2115467384]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "✨ Маг.файнд:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/PassivesSection/MagicFind" unique_id=1954202068]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "8%"
+
+[node name="@Control@20599" type="Control" parent="VBox/MainContent/MiddleColumn/PassivesSection/MagicFind" unique_id=263988415]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ElementsSection" type="VBoxContainer" parent="VBox/MainContent/MiddleColumn" unique_id=1111345441]
+layout_mode = 2
+
+[node name="@Label@20600" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=1248227207]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "СТИХИИ"
+horizontal_alignment = 1
+
+[node name="Fire" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=102985154]
+layout_mode = 2
+
+[node name="@Label@20601" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Fire" unique_id=2105542288]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🔥 Огонь:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Fire" unique_id=1294577138]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "3"
+
+[node name="@Control@20602" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Fire" unique_id=861891071]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Water" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=1630876065]
+layout_mode = 2
+
+[node name="@Label@20603" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Water" unique_id=162961953]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💧 Вода:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Water" unique_id=1919049050]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "2"
+
+[node name="@Control@20604" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Water" unique_id=986931647]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Earth" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=856662370]
+layout_mode = 2
+
+[node name="@Label@20605" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Earth" unique_id=1771260284]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🌍 Земля:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Earth" unique_id=496474030]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "4"
+
+[node name="@Control@20606" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Earth" unique_id=1099462245]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Air" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=1682472821]
+layout_mode = 2
+
+[node name="@Label@20607" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Air" unique_id=926997044]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🌪️ Воздух:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Air" unique_id=1435022244]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "1"
+
+[node name="@Control@20608" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Air" unique_id=826604154]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Light" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=2076687801]
+layout_mode = 2
+
+[node name="@Label@20609" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Light" unique_id=615694081]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "☀️ Свет:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Light" unique_id=523145580]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "0"
+
+[node name="@Control@20610" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Light" unique_id=481109319]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Dark" type="HBoxContainer" parent="VBox/MainContent/MiddleColumn/ElementsSection" unique_id=1837935398]
+layout_mode = 2
+
+[node name="@Label@20611" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Dark" unique_id=573841966]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🌑 Тьма:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/MiddleColumn/ElementsSection/Dark" unique_id=239466548]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "0"
+
+[node name="@Control@20612" type="Control" parent="VBox/MainContent/MiddleColumn/ElementsSection/Dark" unique_id=1012438733]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="RightColumn" type="VBoxContainer" parent="VBox/MainContent" unique_id=1983909292]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="AccountInfo" type="VBoxContainer" parent="VBox/MainContent/RightColumn" unique_id=647292279]
+layout_mode = 2
+
+[node name="@Label@20613" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=1789544115]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "ИНФОРМАЦИЯ"
+horizontal_alignment = 1
+
+[node name="Nick" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=1277521952]
+layout_mode = 2
+
+[node name="@Label@20614" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Nick" unique_id=1256740405]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🏷️ Ник:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Nick" unique_id=1103901936]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Игрок123"
+
+[node name="@Control@20615" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/Nick" unique_id=241621695]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Gender" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=752043939]
+layout_mode = 2
+
+[node name="@Label@20616" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Gender" unique_id=663847884]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⚥ Пол:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Gender" unique_id=1738446406]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Мужской"
+
+[node name="@Control@20617" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/Gender" unique_id=1745900443]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Element" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=293383581]
+layout_mode = 2
+
+[node name="@Label@20618" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Element" unique_id=314437664]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🔮 Стихия:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Element" unique_id=1547205867]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Огонь"
+
+[node name="@Control@20619" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/Element" unique_id=321856842]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Title" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=2114053818]
+layout_mode = 2
+
+[node name="@Label@20620" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Title" unique_id=1868418292]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "👑 Титул:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Title" unique_id=1681290003]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Завоеватель"
+
+[node name="@Control@20621" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/Title" unique_id=1496463492]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Guild" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=1292303697]
+layout_mode = 2
+
+[node name="@Label@20622" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Guild" unique_id=1329894904]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🏛️ Гильдия:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/Guild" unique_id=1718983655]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Легион Света"
+
+[node name="@Control@20623" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/Guild" unique_id=1635275947]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="GuildEmblem" type="HBoxContainer" parent="VBox/MainContent/RightColumn/AccountInfo" unique_id=1753280628]
+layout_mode = 2
+
+[node name="@Label@20624" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/GuildEmblem" unique_id=1817605809]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🛡️ Герб:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/AccountInfo/GuildEmblem" unique_id=316461011]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "🛡️"
+
+[node name="@Control@20625" type="Control" parent="VBox/MainContent/RightColumn/AccountInfo/GuildEmblem" unique_id=794349278]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatsSection" type="VBoxContainer" parent="VBox/MainContent/RightColumn" unique_id=1969822085]
+layout_mode = 2
+
+[node name="@Label@20626" type="Label" parent="VBox/MainContent/RightColumn/StatsSection" unique_id=554112420]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.84, 0, 1)
+theme_override_font_sizes/font_size = 16
+text = "СТАТИСТИКА"
+horizontal_alignment = 1
+
+[node name="PvpWins" type="HBoxContainer" parent="VBox/MainContent/RightColumn/StatsSection" unique_id=867440408]
+layout_mode = 2
+
+[node name="@Label@20627" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/PvpWins" unique_id=1054205655]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "⚔️ ПВП побед:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/PvpWins" unique_id=959986320]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "153"
+
+[node name="@Control@20628" type="Control" parent="VBox/MainContent/RightColumn/StatsSection/PvpWins" unique_id=1550439930]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Monsters" type="HBoxContainer" parent="VBox/MainContent/RightColumn/StatsSection" unique_id=1511134732]
+layout_mode = 2
+
+[node name="@Label@20629" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Monsters" unique_id=83446907]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "👾 Монстров:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Monsters" unique_id=215475060]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "2847"
+
+[node name="@Control@20630" type="Control" parent="VBox/MainContent/RightColumn/StatsSection/Monsters" unique_id=1086280809]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Earned" type="HBoxContainer" parent="VBox/MainContent/RightColumn/StatsSection" unique_id=1547342168]
+layout_mode = 2
+
+[node name="@Label@20631" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Earned" unique_id=1706691504]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "💰 Заработано:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Earned" unique_id=488857442]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "1.5M"
+
+[node name="@Control@20632" type="Control" parent="VBox/MainContent/RightColumn/StatsSection/Earned" unique_id=1508990748]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Bosses" type="HBoxContainer" parent="VBox/MainContent/RightColumn/StatsSection" unique_id=579563883]
+layout_mode = 2
+
+[node name="@Label@20633" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Bosses" unique_id=1242520194]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "👑 Боссов:"
+
+[node name="Value" type="Label" parent="VBox/MainContent/RightColumn/StatsSection/Bosses" unique_id=1633612035]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "47"
+
+[node name="@Control@20634" type="Control" parent="VBox/MainContent/RightColumn/StatsSection/Bosses" unique_id=1072884324]
+layout_mode = 2
+size_flags_horizontal = 3
