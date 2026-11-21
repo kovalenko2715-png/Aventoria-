@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../main.dart';
+import '../services/audio_manager.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -15,8 +16,18 @@ class _AuthScreenState extends State<AuthScreen> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
-  bool _isRegister = false;
+  double _logoOpacity = 0.0;
+
+  bool _isLogin = true;
   bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(Duration.zero, () {
+      if (mounted) setState(() => _logoOpacity = 1.0);
+    });
+  }
 
   @override
   void dispose() {
@@ -33,6 +44,10 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
+  Future<void> _game() async {
+    await AudioManager.instance.switchToGameMusic();
+  }
+
   Future<void> _submitEmail() async {
     final email = _email.text.trim();
     final password = _password.text;
@@ -44,23 +59,24 @@ class _AuthScreenState extends State<AuthScreen> {
       _showError('Пароль минимум 6 символов');
       return;
     }
-    if (_isRegister && password != _confirm.text) {
+    if (!_isLogin && password != _confirm.text) {
       _showError('Пароли не совпадают');
       return;
     }
     setState(() => _busy = true);
     try {
-      if (_isRegister) {
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: email,
-          password: password,
-        );
-      } else {
+      if (_isLogin) {
         await FirebaseAuth.instance.signInWithEmailAndPassword(
           email: email,
           password: password,
         );
+      } else {
+        await FirebaseAuth.instance.createUserWithEmailAndPassword(
+          email: email,
+          password: password,
+        );
       }
+      await _game();
     } on FirebaseAuthException catch (e) {
       _showError(_authMessage(e.code));
     } catch (_) {
@@ -81,6 +97,7 @@ class _AuthScreenState extends State<AuthScreen> {
         idToken: googleAuth.idToken,
       );
       await FirebaseAuth.instance.signInWithCredential(credential);
+      await _game();
     } on FirebaseAuthException catch (e) {
       _showError(_authMessage(e.code));
     } catch (_) {
@@ -117,97 +134,146 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Image.asset('assets/images/day1.png', height: 160),
-                const SizedBox(height: 12),
-                const Text(
-                  'AVENTORIA',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: kGoldColor,
-                    letterSpacing: 4,
-                  ),
-                ),
-                const SizedBox(height: 32),
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Почта',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.mail_outline),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: _isRegister ? 'Придумайте пароль' : 'Пароль',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.lock_outline),
-                  ),
-                ),
-                if (_isRegister) ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _confirm,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Повторите пароль',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.lock_outline),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _busy ? null : _submitEmail,
-                  child: _busy
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(_isRegister ? 'Зарегистрироваться' : 'Войти'),
-                ),
-                TextButton(
-                  onPressed: _busy
-                      ? null
-                      : () => setState(() => _isRegister = !_isRegister),
-                  child: Text(_isRegister
-                      ? 'Уже есть аккаунт? Войти'
-                      : 'Нет аккаунта? Зарегистрироваться'),
-                ),
-                const SizedBox(height: 8),
-                const Row(
-                  children: [
-                    Expanded(child: Divider()),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('или'),
-                    ),
-                    Expanded(child: Divider()),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _signInWithGoogle,
-                  icon: const Icon(Icons.login, size: 24),
-                  label: const Text('Войти через Google'),
-                ),
-              ],
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedOpacity(
+            opacity: _logoOpacity,
+            duration: const Duration(seconds: 2),
+            curve: Curves.easeIn,
+            child: Image.asset(
+              'assets/logo.png',
+              fit: BoxFit.cover,
             ),
           ),
+          LayoutBuilder(
+            builder: (context, c) {
+              final h = c.maxHeight;
+              final w = c.maxWidth;
+              return Positioned(
+                left: w * 0.2,
+                right: w * 0.2,
+                top: h * 0.55,
+                bottom: h * 0.05,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _field(_email, 'Логин (email)',
+                        Icons.mail_outline, false,
+                        TextInputType.emailAddress),
+                    const SizedBox(height: 10),
+                    _field(_password,
+                        _isLogin ? 'Пароль' : 'Придумайте пароль',
+                        Icons.lock_outline, true, TextInputType.text),
+                    if (!_isLogin) ...[
+                      const SizedBox(height: 10),
+                      _field(
+                          _confirm,
+                          'Повтор пароля',
+                          Icons.lock_outline,
+                          true,
+                          TextInputType.text),
+                    ],
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: _busy ? null : _submitEmail,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xCC000000),
+                          side: const BorderSide(
+                              color: kGoldColor),
+                        ),
+                        child: _busy
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2))
+                            : Text(
+                                _isLogin
+                                    ? 'ВОЙТИ'
+                                    : 'ЗАРЕГИСТРИРОВАТЬСЯ',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _busy
+                          ? null
+                          : () => setState(() => _isLogin = !_isLogin),
+                      child: Text(
+                        _isLogin
+                            ? 'Нет аккаунта? Регистрация'
+                            : 'Уже есть аккаунт? Вход',
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13),
+                      ),
+                    ),
+                    const Divider(
+                        color: Colors.white24,
+                        height: 16),
+                    SizedBox(
+                      height: 44,
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _signInWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor:
+                              const Color(0xCC000000),
+                          side: const BorderSide(
+                              color: Colors.white24),
+                        ),
+                        icon: const Text('G',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold)),
+                        label: const Text('Войти через Google',
+                            style: TextStyle(
+                                color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(
+      TextEditingController ctl, String hint, IconData icon,
+      bool secret, TextInputType type) {
+    return SizedBox(
+      height: 44,
+      child: TextField(
+        controller: ctl,
+        obscureText: secret,
+        keyboardType: type,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle:
+              const TextStyle(color: Colors.white54, fontSize: 13),
+          filled: true,
+          fillColor: const Color(0xB3000000),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 0),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6)),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: Colors.white24),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(6),
+            borderSide: const BorderSide(color: kGoldColor),
+          ),
+          prefixIcon: Icon(icon, size: 18, color: Colors.white38),
         ),
       ),
     );

@@ -13,7 +13,7 @@ const kPanelColor = Color(0xFF1E1E1E);
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  AudioManager.instance.startMenuMusic();
+  AudioManager.instance.startLoginMusic();
   runApp(const AventoriaApp());
 }
 
