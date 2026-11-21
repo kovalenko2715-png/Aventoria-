@@ -73,7 +73,17 @@ class _MainScreenState extends State<MainScreen>
 
   Future<void> _initPlayer() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user != null) await _player.loadOrCreate(user);
+    if (user != null) {
+      try {
+        await _player
+            .loadOrCreate(user)
+            .timeout(const Duration(seconds: 15));
+      } catch (e) {
+        _lastMessage =
+            'Система: профиль не загрузился, стадия офлайн-режима'
+            ' (${e.toString()})';
+      }
+    }
     if (mounted) setState(() => _loading = false);
   }
 
