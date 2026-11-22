@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:audioplayers/audioplayers.dart';
 
+import 'resource_service.dart';
+
 class AudioManager {
   AudioManager._();
   static final AudioManager instance = AudioManager._();
@@ -21,10 +23,15 @@ class AudioManager {
   bool get isMusicEnabled => _enabled;
   double get musicVolume => _volume;
 
+  Source _resolve(String asset) {
+    final path = ResourceService.instance.filePath(asset);
+    return path != null ? DeviceFileSource(path) : AssetSource(asset);
+  }
+
   Future<void> startLoginMusic() async {
     try {
       await _player
-          .play(AssetSource('audio/evoria.mp3'))
+          .play(_resolve('audio/evoria.mp3'))
           .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
@@ -39,7 +46,7 @@ class AudioManager {
   Future<void> _playCurrentMenuTrack() async {
     try {
       await _player
-          .play(AssetSource(_menuTracks[_trackIndex]))
+          .play(_resolve(_menuTracks[_trackIndex]))
           .timeout(const Duration(seconds: 5));
       await _player.setReleaseMode(ReleaseMode.loop);
     } catch (_) {

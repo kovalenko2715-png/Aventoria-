@@ -1,14 +1,17 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 
 import 'screens/auth_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/audio_manager.dart';
+import 'services/resource_service.dart';
 import 'services/update_service.dart';
 import 'widgets/godot_viewport.dart';
 
@@ -71,7 +74,7 @@ class AventoriaApp extends StatefulWidget {
   State<AventoriaApp> createState() => _AventoriaAppState();
 }
 
-enum _BootStage { boot, error, app }
+enum _BootStage { boot, resources, error, app }
 
 class _AventoriaAppState extends State<AventoriaApp> {
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
@@ -117,6 +120,19 @@ class _AventoriaAppState extends State<AventoriaApp> {
       return;
     }
     await Future.delayed(const Duration(milliseconds: 100));
+    _setLabel('Ресурсы...');
+    final info = await PackageInfo.fromPlatform();
+    await ResourceService.instance.loadLocal();
+    if (!ResourceService.instance.isVersion(info.version)) {
+      if (!mounted) return;
+      setState(() => _stage = _BootStage.resources);
+      await _handleResources(info);
+      return;
+    }
+    await _enterGame();
+  }
+
+  Future<void> _enterGame() async {
     _setLabel('Запуск...');
     AudioManager.instance.startLoginMusic();
     if (mounted) {
@@ -128,6 +144,175 @@ class _AventoriaAppState extends State<AventoriaApp> {
     _syncUser();
     _bootTimer?.cancel();
     _checkUpdates();
+  }
+
+  Future<void> _handleResources(PackageInfo info) async {
+    final ctx = _navKey.currentContext;
+    if (ctx == null) {
+      await _enterGame();
+      return;
+    }
+    var sizeMb = 0;
+    var checked = false;
+    while (!checked) {
+      try {
+        await ResourceService.instance.checkRemote();
+        sizeMb = (ResourceService.instance.latestSize / (1024 * 1024)).round();
+        checked = true;
+      } catch (e) {
+        final retry = await showDialog<bool>(
+          context: ctx,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF151515),
+            title: const Text('Нет связи с сервером',
+                style: TextStyle(color: Colors.white, fontSize: 17)),
+            content: const Text(
+              'Не удалось проверить файлы игры на GitHub.\nПроверь интернет и повтори.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Выход',
+                    style: TextStyle(color: Colors.white54)),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Повторить',
+                    style: TextStyle(
+                        color: kGoldColor, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+        if (retry != true) {
+          await SystemNavigator.pop();
+          exit(0);
+        }
+      }
+    }
+    final yes = await showDialog<bool>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        title: const Text('Файлы игры не загружены',
+            style: TextStyle(color: Colors.white, fontSize: 17)),
+        content: Text(
+          'Клиент скачает файлы игры с GitHub:\nМузыка и графика — $sizeMb МБ.\n\nСкачать сейчас?',
+          style: const TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Нет, выйти',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Скачать',
+                style: TextStyle(
+                    color: kGoldColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) {
+      await SystemNavigator.pop();
+      exit(0);
+    }
+    await _downloadResources(info);
+  }
+
+  Future<void> _downloadResources(PackageInfo info) async {
+    var received = 0, total = 0, bps = 0;
+    StateSetter? dlgSet;
+    final ctx = _navKey.currentContext;
+    if (ctx == null) return;
+    showDialog<void>(
+      context: ctx,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx2, setDlg) {
+          dlgSet = setDlg;
+          return AlertDialog(
+            backgroundColor: const Color(0xFF151515),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10)),
+            title: const Text('Загрузка файлов игры',
+                style: TextStyle(color: Colors.white, fontSize: 17)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                LinearProgressIndicator(
+                  value: total > 0 ? received / total : null,
+                  color: kGoldColor,
+                  backgroundColor: Colors.white12,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  total > 0
+                      ? '${_modSize(received)} / ${_modSize(total)} МБ '
+                          '(${(received / (total == 0 ? 1 : total) * 100).toStringAsFixed(0)}%)'
+                          '${bps > 0 ? '  ${_modSpeed(bps)}' : ''}'
+                      : 'Загрузка...',
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+    var ok = false;
+    while (!ok) {
+      try {
+        await ResourceService.instance.download(info.version, (r, t, b) {
+          received = r;
+          total = t;
+          bps = b;
+          if (dlgSet != null) dlgSet!(() {});
+        });
+        ok = true;
+      } catch (e) {
+        final retryCtx = _navKey.currentContext;
+        if (retryCtx == null) return;
+        final retry = await showDialog<bool>(
+          context: retryCtx,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF151515),
+            title: const Text('Ошибка загрузки',
+                style: TextStyle(color: Colors.redAccent, fontSize: 16)),
+            content: Text('$e',
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 12)),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Выход',
+                      style: TextStyle(color: Colors.white54))),
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Повторить',
+                      style: TextStyle(color: kGoldColor))),
+            ],
+          ),
+        );
+        if (retry != true) {
+          await SystemNavigator.pop();
+          exit(0);
+        }
+      }
+    }
+    final doneCtx = _navKey.currentContext;
+    if (doneCtx != null && Navigator.of(doneCtx, rootNavigator: true).canPop()) {
+      Navigator.of(doneCtx, rootNavigator: true).pop();
+    }
+    await _enterGame();
   }
 
   String _modSize(int bytes) {
@@ -321,6 +506,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
       home: switch (_stage) {
         _BootStage.boot =>
             _BootScreen(label: _bootLabel, seconds: _bootSeconds),
+        _BootStage.resources => const _ResourceGate(),
         _BootStage.error => _BootError(error: _error),
         _BootStage.app => _user != null
             ? const MainScreen()
@@ -352,6 +538,30 @@ class _BootScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.only(bottom: 40),
             child: CircularProgressIndicator(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResourceGate extends StatelessWidget {
+  const _ResourceGate();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset('assets/logo.png', fit: BoxFit.cover),
+          Container(color: Colors.black.withOpacity(0.45)),
+          Center(
+            child: Text('Загрузка файлов игры...',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    backgroundColor: Colors.black54)),
           ),
         ],
       ),

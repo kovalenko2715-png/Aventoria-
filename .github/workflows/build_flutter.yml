@@ -54,13 +54,24 @@ jobs:
           name: aventoria-apk-debug
           path: flutter/build/app/outputs/flutter-apk/app-debug.apk
 
+      - name: Pack game resources
+        run: |
+          cd flutter/assets
+          zip -qr /home/runner/aventoria-resources.zip audio images
+
+      - name: Upload game resources artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aventoria-resources
+          path: /home/runner/aventoria-resources.zip
+
       - name: Publish release APK to GitHub Releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER=$(grep '^version:' flutter/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           TAG="v$VER"
-          gh release create "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk \
+          gh release create "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk /home/runner/aventoria-resources.zip \
             --title "Aventoria $TAG" \
             --notes "Сборка #$GITHUB_RUN_NUMBER ($GITHUB_SHA)" \
-            || gh release upload "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk --clobber
+            || gh release upload "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk /home/runner/aventoria-resources.zip --clobber

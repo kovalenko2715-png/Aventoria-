@@ -7,6 +7,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import '../main.dart';
 import '../services/chat_service.dart';
 import '../services/player_repository.dart';
+import '../widgets/game_image.dart';
 import 'arena_screen.dart';
 import 'auction_screen.dart';
 import 'bosses_screen.dart';
@@ -186,8 +187,8 @@ class _MainScreenState extends State<MainScreen>
     return Stack(
       fit: StackFit.expand,
       children: [
-        Image.asset(
-          _isDay ? 'assets/images/day1.png' : 'assets/images/day2.png',
+        GameImage(
+          _isDay ? 'images/day1.png' : 'images/day2.png',
           fit: BoxFit.cover,
         ),
         LayoutBuilder(
@@ -247,8 +248,7 @@ class _MainScreenState extends State<MainScreen>
                     color: kGoldColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w600)),
-            Image.asset('assets/images/ui/gold_icon.png',
-                width: 28, height: 28),
+            GameImage('images/ui/gold_icon.png', width: 28, height: 28),
             Text('$gold',
                 style:
                     const TextStyle(color: kGoldColor, fontSize: 16)),
@@ -278,8 +278,7 @@ class _MainScreenState extends State<MainScreen>
             const SizedBox(width: 10),
             Text('$rune',
                 style: const TextStyle(color: kRuneBlue, fontSize: 16)),
-            Image.asset('assets/images/ui/rune_icon.png',
-                width: 26, height: 26),
+            GameImage('images/ui/rune_icon.png', width: 26, height: 26),
             const SizedBox(width: 2),
             FadeTransition(
               opacity: curvedPulse,

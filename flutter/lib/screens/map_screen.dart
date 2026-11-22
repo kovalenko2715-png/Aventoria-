@@ -4,6 +4,7 @@ import '../data/game_data.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
 import '../screens/battle_screen.dart';
+import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 
 class MapScreen extends StatelessWidget {
@@ -114,7 +115,7 @@ class MapScreen extends StatelessWidget {
               child: Stack(
                 children: [
                   Positioned.fill(
-                    child: Image.asset('assets/images/map.png',
+                    child: GameImage('images/map.png',
                         fit: BoxFit.contain),
                   ),
                   for (final e in mapLocations.entries)
