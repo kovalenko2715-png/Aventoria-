@@ -3,13 +3,10 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:package_info_plus/package_info_plus.dart';
-import 'package:path_provider/path_provider.dart';
 
 import '../main.dart';
 import '../services/chat_service.dart';
 import '../services/player_repository.dart';
-import '../services/update_service.dart';
 import 'arena_screen.dart';
 import 'auction_screen.dart';
 import 'bosses_screen.dart';
@@ -56,7 +53,6 @@ class _MainScreenState extends State<MainScreen>
     _clockTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(_updateClock);
     });
-    Future.delayed(const Duration(seconds: 3), _checkUpdates);
   }
 
   @override
@@ -89,144 +85,6 @@ class _MainScreenState extends State<MainScreen>
       }
     }
     if (mounted) setState(() => _loading = false);
-  }
-
-  String _modSize(int bytes) {
-    final mb = bytes / (1024 * 1024);
-    return mb.toStringAsFixed(1);
-  }
-
-  String _modSpeed(int bps) {
-    if (bps <= 0) return '';
-    final mbps = bps / (1024 * 1024);
-    if (mbps >= 1) return '~${mbps.toStringAsFixed(1)} МБ/с';
-    return '~${(bps / 1024).toStringAsFixed(0)} КБ/с';
-  }
-
-  Future<void> _checkUpdates() async {
-    try {
-      final info = await PackageInfo.fromPlatform();
-      await UpdateService.instance.checkForUpdate(info.version);
-      if (!mounted || !UpdateService.instance.hasUpdate) return;
-      final tag = UpdateService.instance.latestTag;
-      final sizeMb = _modSize(UpdateService.instance.apkSize);
-      if (!mounted) return;
-      final install = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF151515),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10)),
-          title: Row(
-            children: [
-              const Icon(Icons.system_update,
-                  color: kGoldColor, size: 22),
-              const SizedBox(width: 8),
-              Text('Обновление $tag',
-                  style: const TextStyle(
-                      color: Colors.white, fontSize: 17)),
-            ],
-          ),
-          content: Text(
-            'Доступна новая версия игры.\nВес: $sizeMb МБ.\n\nДальше скачаем с GitHub и установим поверх — прогресс и ресурсы сохранятся.',
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Позже',
-                  style: TextStyle(color: Colors.white54)),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Обновить',
-                  style: TextStyle(
-                      color: kGoldColor,
-                      fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      );
-      if (install == true && mounted) _downloadUpdate();
-    } catch (_) {}
-  }
-
-  Future<void> _downloadUpdate() async {
-    var received = 0, total = 0, bps = 0;
-    StateSetter? dlgSet;
-    final upd = UpdateService.instance;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx2, setDlg) {
-          dlgSet = setDlg;
-          return AlertDialog(
-            backgroundColor: const Color(0xFF151515),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            title: Text(upd.latestTag,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 17)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                  value: total > 0 ? received / total : null,
-                  color: kGoldColor,
-                  backgroundColor: Colors.white12,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  total > 0
-                      ? '${_modSize(received)} / ${_modSize(total)} МБ '
-                          '(${(received / (total == 0 ? 1 : total) * 100).toStringAsFixed(0)}%)'
-                          '${bps > 0 ? '  ${_modSpeed(bps)}' : ''}'
-                      : 'Загрузка...',
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12),
-                ),
-              ],
-            ),
-          );
-        });
-      },
-    );
-    try {
-      final dir = await getTemporaryDirectory();
-      final file = await upd.downloadApk((r, t, b) {
-        received = r;
-        total = t;
-        bps = b;
-        if (dlgSet != null) dlgSet!(() {});
-      }, savePath: '${dir.path}/');
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      await upd.install(file);
-    } catch (e) {
-      if (mounted && Navigator.of(context, rootNavigator: true).canPop()) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-      if (mounted) {
-        showDialog<void>(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF151515),
-            title: const Text('Ошибка обновления',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16)),
-            content: Text('$e',
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 12)),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK',
-                      style: TextStyle(color: kGoldColor))),
-            ],
-          ),
-        );
-      }
-    }
   }
 
   void _openModule(String title) {
