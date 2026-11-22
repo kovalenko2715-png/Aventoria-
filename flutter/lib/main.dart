@@ -129,7 +129,12 @@ class _AventoriaAppState extends State<AventoriaApp> {
 
   Future<void> _enterGame() async {
     _setLabel('Запуск...');
-    AudioManager.instance.startLoginMusic();
+    final alreadyIn = FirebaseAuth.instance.currentUser != null;
+    if (alreadyIn) {
+      AudioManager.instance.switchToGameMusic();
+    } else {
+      AudioManager.instance.startLoginMusic();
+    }
     if (mounted) {
       setState(() {
         _stage = _BootStage.app;
@@ -138,6 +143,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
     _poll = Timer.periodic(const Duration(seconds: 1), (_) => _syncUser());
     _syncUser();
     _bootTimer?.cancel();
+    await _cleanupStaleUpdateApk();
     _checkUpdates();
   }
 
@@ -415,87 +421,138 @@ class _AventoriaAppState extends State<AventoriaApp> {
   }
 
   Future<void> _downloadUpdate() async {
-    var received = 0, total = 0, bps = 0;
-    StateSetter? dlgSet;
     final upd = UpdateService.instance;
     var liveCtx = _navKey.currentContext;
     if (liveCtx == null) return;
-    showDialog<void>(
-      context: liveCtx,
-      barrierDismissible: false,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx2, setDlg) {
-          dlgSet = setDlg;
-          return AlertDialog(
-            backgroundColor: const Color(0xFF151515),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10)),
-            title: Text(upd.latestTag,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 17)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                LinearProgressIndicator(
-                  value: total > 0 ? received / total : null,
-                  color: kGoldColor,
-                  backgroundColor: Colors.white12,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  total > 0
-                      ? '${_modSize(received)} / ${_modSize(total)} МБ '
-                          '(${(received / (total == 0 ? 1 : total) * 100).toStringAsFixed(0)}%)'
-                          '${bps > 0 ? '  ${_modSpeed(bps)}' : ''}'
-                      : 'Загрузка...',
+    final granted = await upd.requestInstallPermission();
+    if (!granted) {
+      final denCtx = _navKey.currentContext;
+      if (denCtx == null) return;
+      showDialog<void>(
+        context: denCtx,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          title: const Text('Нужно разрешение',
+              style: TextStyle(color: Colors.white, fontSize: 16)),
+          content: const Text(
+            'Разреши установку из этого приложения в настройках Android, потом попробуй обновление ещё раз.',
+            style: TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK',
+                    style: TextStyle(color: kGoldColor))),
+          ],
+        ),
+      );
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    final apkFile = File('${dir.path}/aventoria-update.apk');
+    final marker = File('${dir.path}/aventoria-update.done');
+    final alreadyDownloaded = apkFile.existsSync() &&
+        marker.existsSync() &&
+        marker.readAsStringSync().trim() == upd.latestTag;
+    if (!alreadyDownloaded) {
+      var received = 0, total = 0, bps = 0;
+      StateSetter? dlgSet;
+      final dCtx = _navKey.currentContext;
+      if (dCtx == null) return;
+      showDialog<void>(
+        context: dCtx,
+        barrierDismissible: false,
+        builder: (ctx) {
+          return StatefulBuilder(builder: (ctx2, setDlg) {
+            dlgSet = setDlg;
+            return AlertDialog(
+              backgroundColor: const Color(0xFF151515),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              title: Text(upd.latestTag,
                   style: const TextStyle(
-                      color: Colors.white70, fontSize: 12),
-                ),
+                      color: Colors.white, fontSize: 17)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  LinearProgressIndicator(
+                    value: total > 0 ? received / total : null,
+                    color: kGoldColor,
+                    backgroundColor: Colors.white12,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    total > 0
+                        ? '${_modSize(received)} / ${_modSize(total)} МБ '
+                            '(${(received / (total == 0 ? 1 : total) * 100).toStringAsFixed(0)}%)'
+                            '${bps > 0 ? '  ${_modSpeed(bps)}' : ''}'
+                        : 'Загрузка...',
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            );
+          });
+        },
+      );
+      try {
+        await upd.downloadApk((r, t, b) {
+          received = r;
+          total = t;
+          bps = b;
+          if (dlgSet != null) dlgSet!(() {});
+        }, savePath: '${dir.path}/');
+        await marker.writeAsString(upd.latestTag);
+      } catch (e) {
+        final errCtx = _navKey.currentContext;
+        if (errCtx != null &&
+            Navigator.of(errCtx, rootNavigator: true).canPop()) {
+          Navigator.of(errCtx, rootNavigator: true).pop();
+        }
+        final failCtx = _navKey.currentContext;
+        if (failCtx != null) {
+          showDialog<void>(
+            context: failCtx,
+            builder: (ctx) => AlertDialog(
+              backgroundColor: const Color(0xFF151515),
+              title: const Text('Ошибка обновления',
+                  style: TextStyle(color: Colors.redAccent, fontSize: 16)),
+              content: Text('$e',
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 12)),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: const Text('OK',
+                        style: TextStyle(color: kGoldColor))),
               ],
             ),
           );
-        });
-      },
-    );
-    try {
-      final dir = await getTemporaryDirectory();
-      final file = await upd.downloadApk((r, t, b) {
-        received = r;
-        total = t;
-        bps = b;
-        if (dlgSet != null) dlgSet!(() {});
-      }, savePath: '${dir.path}/');
-      final doneCtx = _navKey.currentContext;
-      if (doneCtx != null) Navigator.of(doneCtx, rootNavigator: true).pop();
-      await upd.install(file);
-    } catch (e) {
-      final errCtx = _navKey.currentContext;
-      if (errCtx != null &&
-          Navigator.of(errCtx, rootNavigator: true).canPop()) {
-        Navigator.of(errCtx, rootNavigator: true).pop();
-      }
-      final failCtx = _navKey.currentContext;
-      if (failCtx != null) {
-        showDialog<void>(
-          context: failCtx,
-          builder: (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF151515),
-            title: const Text('Ошибка обновления',
-                style: TextStyle(color: Colors.redAccent, fontSize: 16)),
-            content: Text('$e',
-                style: const TextStyle(
-                    color: Colors.white70, fontSize: 12)),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('OK',
-                      style: TextStyle(color: kGoldColor))),
-            ],
-          ),
-        );
+        }
+        return;
       }
     }
+    final doneCtx = _navKey.currentContext;
+    if (doneCtx != null &&
+        Navigator.of(doneCtx, rootNavigator: true).canPop()) {
+      Navigator.of(doneCtx, rootNavigator: true).pop();
+    }
+    await upd.install(apkFile);
+  }
+
+  /// Скачанный ранее APK после установки больше не нужен — подчищаем.
+  Future<void> _cleanupStaleUpdateApk() async {
+    try {
+      final dir = await getTemporaryDirectory();
+      final marker = File('${dir.path}/aventoria-update.done');
+      if (marker.existsSync()) {
+        marker.deleteSync();
+        final apk = File('${dir.path}/aventoria-update.apk');
+        if (apk.existsSync()) apk.deleteSync();
+      }
+    } catch (_) {}
   }
 
   void _setLabel(String label) {

@@ -39,12 +39,7 @@ class _MailScreenState extends State<MailScreen>
 
   CollectionReference get _mails => FirebaseFirestore.instance.collection('mail');
 
-  Query get _query {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    return _tab == 'inbox'
-        ? _mails.where('to_uid', isEqualTo: uid).orderBy('created_at', descending: true).limit(50)
-        : _mails.where('from_uid', isEqualTo: uid).orderBy('created_at', descending: true).limit(50);
-  }
+  String get _mailField => _tab == 'inbox' ? 'to_uid' : 'from_uid';
 
   Future<void> _send() async {
     final player = (await _findUser(_toCtrl.text.trim()));
@@ -181,13 +176,29 @@ class _MailScreenState extends State<MailScreen>
                     ],
                   )
                 : StreamBuilder<QuerySnapshot>(
-                    stream: _query.snapshots(),
+                    stream: _mails
+                        .orderBy('created_at', descending: true)
+                        .limit(200)
+                        .snapshots(),
                     builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Center(
+                            child: Text('Ошибка почты: ${snap.error}',
+                                style: const TextStyle(
+                                    color: Colors.redAccent, fontSize: 12)));
+                      }
                       if (!snap.hasData) {
                         return const Center(
                             child: CircularProgressIndicator());
                       }
-                      final docs = snap.data!.docs;
+                      final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                      final docs = snap.data!.docs
+                          .where((d) =>
+                              (d.data() as Map<String, dynamic>)[_mailField]
+                                      ?.toString() ==
+                                  uid)
+                          .take(50)
+                          .toList();
                       if (docs.isEmpty) {
                         return const Center(
                             child: Text('Писем нет',

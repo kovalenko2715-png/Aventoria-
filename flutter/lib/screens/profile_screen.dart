@@ -8,16 +8,17 @@ import '../widgets/module_window.dart';
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
-  String _buffStatusLine(dynamic buff, String prefix) {
+  String _buffStatusLine(Map<String, dynamic>? buffs, String key, String prefix) {
+    final buff = buffs?[key] as Map<String, dynamic>?;
     if (buff == null) return '';
-    final name = buff['name'] ?? '';
+    final name = buff['name'] ?? buff['type'] ?? '';
     final expires = (buff['expires_at'] as num?)?.toInt() ?? 0;
     final now = DateTime.now().millisecondsSinceEpoch ~/ 1000;
     final remaining = expires - now;
     if (remaining <= 0) return '';
     final m = remaining ~/ 60;
     final s = remaining % 60;
-    return '$prefix $name ($m:${s.toString().padLeft(2, '0')})';
+    return '$name ($m:${s.toString().padLeft(2, '0')})';
   }
 
   @override
@@ -26,122 +27,211 @@ class ProfileScreen extends StatelessWidget {
     final data = player.data ?? const {};
     final stats = player.statsMap;
     final pvp = (data['stats_pvp'] as Map<String, dynamic>?) ?? const {};
-    final exp = (data['exp'] as num?)?.toInt() ?? 0;
-    final expInLevel = exp % 300;
+    final elements = (data['elements'] as Map<String, dynamic>?) ?? const {};
     final buffs = (data['tavern_buffs'] as Map<String, dynamic>?) ?? const {};
-    final foodBuff = _buffStatusLine(buffs['active_food_buff'], '🍽️');
-    final songBuff = _buffStatusLine(buffs['active_song_buff'], '🎵');
+
+    int stat(String k) => (stats[k] as num?)?.toInt() ?? 0;
+
+    var attackMult = 1.0;
+    var defenseMult = 1.0;
+    var hpBonus = 0, critBonus = 0, evasionBonus = 0;
+    final foodBuff = buffs['active_food_buff'] as Map<String, dynamic>?;
+    final songBuff = buffs['active_song_buff'] as Map<String, dynamic>?;
+    int remaining(Map<String, dynamic>? b) {
+      final ex = (b?['expires_at'] as num?)?.toInt() ?? 0;
+      return ex - DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    }
+
+    if (foodBuff != null && remaining(foodBuff) > 0) {
+      switch ((foodBuff['type'] ?? '').toString()) {
+        case 'strength':
+          attackMult += 0;
+          break;
+        case 'max_hp':
+          hpBonus += (foodBuff['value'] as num?)?.toInt() ?? 0;
+        case 'defense':
+          defenseMult += ((foodBuff['value'] as num?) ?? 0) / 100.0;
+        case 'attack':
+          attackMult += ((foodBuff['value'] as num?) ?? 0) / 100.0;
+      }
+    }
+    if (songBuff != null && remaining(songBuff) > 0) {
+      switch ((songBuff['type'] ?? '').toString()) {
+        case 'attack':
+        case 'berserk':
+          attackMult += ((songBuff['value'] as num?) ?? 0) / 100.0;
+        case 'defense':
+          defenseMult += ((songBuff['value'] as num?) ?? 0) / 100.0;
+        case 'crit_chance':
+          critBonus += (songBuff['value'] as num?)?.toInt() ?? 0;
+        case 'evasion':
+          evasionBonus += (songBuff['value'] as num?)?.toInt() ?? 0;
+      }
+    }
+
+    int finalAttack = ((100 + stat('strength') * 2) * attackMult).toInt() +
+        (foodBuff != null &&
+                remaining(foodBuff) > 0 &&
+                (foodBuff['type'] ?? '') == 'strength'
+            ? (foodBuff['value'] as num?)?.toInt() ?? 0
+            : 0);
+    int finalDefense = ((50 + stat('endurance')) * defenseMult).toInt();
+    int finalHp = 200 + stat('endurance') * 5 + hpBonus;
+    int finalMana = 100 + stat('wisdom') * 3;
+    int critChance = (5 + stat('agility') * 0.5).toInt() + critBonus;
+    int critDamage = 150 + stat('intuition');
+    int evasion = (5 + stat('agility') * 0.5).toInt() + evasionBonus;
+    int magicFind = (5 + stat('intuition') * 0.3).toInt();
+
+    String nick = player.name != 'Герой' ? player.name : '—';
+
+    Widget sectionTitle(String t) => Text(t,
+        style: const TextStyle(
+            color: kGoldColor, fontSize: 15, fontWeight: FontWeight.bold));
+
+    Widget kv(String label, String value, {TextStyle? style}) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Text(label,
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+              const SizedBox(width: 4),
+              Text(value, style: style ?? const TextStyle(color: kGoldColor, fontSize: 13)),
+            ],
+          ),
+        );
 
     return ModuleWindow(
-      title: '👤 Профиль',
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          GameCard(
-            child: Column(
+      title: 'ПРОФИЛЬ ИГРОКА',
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(player.name,
-                    style: const TextStyle(
-                        color: kGoldColor,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(
-                    'Уровень ${player.level} • Опыт $expInLevel/300 • ${itemField(data, 'title', fallback: '—')}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    Text('💰 ${player.gold}',
-                        style: const TextStyle(
-                            color: kGoldColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    Text('🔮 ${player.rune}',
-                        style: const TextStyle(
-                            color: kRuneBlue,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
+                kv('🎰 Уровень:', '${player.level}'),
+                const SizedBox(width: 14),
+                kv('❤️ HP:', '$finalHp/$finalHp'),
+                const SizedBox(width: 14),
+                kv('🧪 Мана:', '$finalMana/$finalMana'),
               ],
             ),
-          ),
-          if (foodBuff.isNotEmpty || songBuff.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: GameCard(
-                child: Text(
-                    'Активные бафы: ${[foodBuff, songBuff].where((b) => b.isNotEmpty).join(' | ')}',
-                    style:
-                        const TextStyle(color: Color(0xFF80FF80), fontSize: 13)),
-              ),
-            ),
-          const SizedBox(height: 12),
-          GameCard(
-            child: Column(
+            const SizedBox(height: 10),
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    const Text('Характеристики',
-                        style: TextStyle(
-                            color: kGoldColor,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600)),
-                    const Spacer(),
-                    Text('Очки: ${data['stat_points'] ?? 0}',
-                        style: const TextStyle(color: kGoldColor, fontSize: 14)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                for (final stat in playerStatOrder)
-                  _StatRow(
-                    label: playerStatNames[stat]!,
-                    value: (stats[stat] as num?)?.toInt() ?? 0,
-                    statKey: stat,
-                    canSpend:
-                        ((data['stat_points'] as num?)?.toInt() ?? 0) > 0,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sectionTitle('ХАРАКТЕРИСТИКИ'),
+                      const SizedBox(height: 4),
+                      kv('⭐ Свободные очки:',
+                          '${(data['stat_points'] as num?)?.toInt() ?? 0}'),
+                      for (final k in playerStatOrder)
+                        _StatPlusRow(
+                          label: playerStatNames[k]!,
+                          value: stat(k),
+                          statKey: k,
+                          canSpend:
+                              ((data['stat_points'] as num?)?.toInt() ?? 0) > 0,
+                        ),
+                    ],
                   ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sectionTitle('ПАССИВНЫЕ'),
+                      const SizedBox(height: 4),
+                      kv('⚔️ Атака:', '$finalAttack'),
+                      kv('🛡️ Защита:', '$finalDefense'),
+                      kv('❤️ HP:', '$finalHp/$finalHp'),
+                      kv('🧪 Мана:', '$finalMana/$finalMana'),
+                      kv('🎯 Шанс крита:', '$critChance%'),
+                      kv('💥 Крит.урон:', '$critDamage%'),
+                      kv('🌀 Уклонение:', '$evasion%'),
+                      kv('✨ Маг.файнд:', '$magicFind%'),
+                      const SizedBox(height: 10),
+                      sectionTitle('СТИХИИ'),
+                      const SizedBox(height: 4),
+                      kv('🔥 Огонь:',
+                          '${(elements['fire'] as num?)?.toInt() ?? 0}'),
+                      kv('💧 Вода:',
+                          '${(elements['water'] as num?)?.toInt() ?? 0}'),
+                      kv('🌍 Земля:',
+                          '${(elements['earth'] as num?)?.toInt() ?? 0}'),
+                      kv('🌬️ Воздух:',
+                          '${(elements['air'] as num?)?.toInt() ?? 0}'),
+                      kv('☀️ Свет:',
+                          '${(elements['light'] as num?)?.toInt() ?? 0}'),
+                      kv('🌙 Тьма:',
+                          '${(elements['dark'] as num?)?.toInt() ?? 0}'),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      sectionTitle('ИНФОРМАЦИЯ'),
+                      const SizedBox(height: 4),
+                      kv('Nickname:', nick),
+                      kv('Пол:', '—'),
+                      kv('Стихия:',
+                          itemField(data, 'element', fallback: '—')),
+                      kv('Титул:', itemField(data, 'title', fallback: '—')),
+                      kv('Гильдия:', itemField(data, 'guild', fallback: '—')),
+                      kv('Герб:', itemField(data, 'guild_emblem', fallback: '—')),
+                      const SizedBox(height: 10),
+                      sectionTitle('СТАТИСТИКА'),
+                      const SizedBox(height: 4),
+                      kv('⚔️ ПВП побед:',
+                          '${(pvp['pvp_wins'] as num?)?.toInt() ?? 0}'),
+                      kv('👹 Монстров:',
+                          '${(pvp['monsters'] as num?)?.toInt() ?? 0}'),
+                      kv('💰 Заработано:',
+                          '${(pvp['earned'] as num?)?.toInt() ?? 0}'),
+                      kv('👑 Боссов:',
+                          '${(pvp['bosses'] as num?)?.toInt() ?? 0}'),
+                      const SizedBox(height: 10),
+                      sectionTitle('АКТИВНЫЕ БАФЫ'),
+                      const SizedBox(height: 4),
+                      Text(
+                        (() {
+                          final food = _buffStatusLine(
+                              buffs, 'active_food_buff', '🍽️');
+                          final song = _buffStatusLine(
+                              buffs, 'active_song_buff', '🎵');
+                          final parts = [food, song]
+                              .where((b) => b.isNotEmpty)
+                              .toList();
+                          return parts.isEmpty ? 'Нет активных бафов' : parts.join('\n');
+                        })(),
+                        style: const TextStyle(
+                            color: Color(0xFF80FF80), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          GameCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Статистика',
-                    style: TextStyle(
-                        color: kGoldColor,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                Text('Побед в PvP: ${pvp['pvp_wins'] ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14)),
-                Text('Побед над монстрами: ${pvp['monsters'] ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14)),
-                Text('Заработано: ${pvp['earned'] ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14)),
-                Text('Побеждено боссов: ${pvp['bosses'] ?? 0}',
-                    style: const TextStyle(color: Colors.white, fontSize: 14)),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _StatRow extends StatelessWidget {
+class _StatPlusRow extends StatelessWidget {
   final String label;
   final int value;
   final String statKey;
   final bool canSpend;
 
-  const _StatRow({
+  const _StatPlusRow({
     required this.label,
     required this.value,
     required this.statKey,
@@ -151,16 +241,18 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         children: [
-          Expanded(
-            child: Text('$label: $value',
-                style: const TextStyle(color: Colors.white, fontSize: 15)),
-          ),
+          Text('$label:',
+              style: const TextStyle(color: Colors.white, fontSize: 13)),
+          const SizedBox(width: 4),
+          Text('$value',
+              style: const TextStyle(color: kGoldColor, fontSize: 13)),
+          const Spacer(),
           SizedBox(
-            width: 36,
-            height: 30,
+            width: 30,
+            height: 26,
             child: OutlinedButton(
               style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.zero,
@@ -170,9 +262,9 @@ class _StatRow extends StatelessWidget {
               onPressed: canSpend
                   ? () =>
                       PlayerRepository.instance.spendStatPoint(statKey)
-              : null,
+                  : null,
               child: const Text('+',
-                  style: TextStyle(color: kGoldColor, fontSize: 16)),
+                  style: TextStyle(color: kGoldColor, fontSize: 15)),
             ),
           ),
         ],

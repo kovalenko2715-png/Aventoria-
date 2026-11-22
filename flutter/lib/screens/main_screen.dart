@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 import '../main.dart';
+import '../services/audio_manager.dart';
 import '../services/chat_service.dart';
 import '../services/player_repository.dart';
 import '../widgets/game_image.dart';
@@ -102,7 +103,7 @@ class _MainScreenState extends State<MainScreen>
             type: MaterialType.transparency,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 70, 14, 122),
+                padding: const EdgeInsets.fromLTRB(14, 70, 14, 62),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: screen,
@@ -206,14 +207,14 @@ class _MainScreenState extends State<MainScreen>
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
-                  top: 76,
-                  bottom: 116,
+                  top: 70,
+                  bottom: 56,
                   child: _contentArea(),
                 ),
                 Positioned(
                   left: w * 0.10,
                   right: w * 0.10,
-                  bottom: 8,
+                  bottom: 10,
                   child: _bottomNav(),
                 ),
                 if (_burgerOpen &&
@@ -331,41 +332,35 @@ class _MainScreenState extends State<MainScreen>
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: kGoldColor.withOpacity(0.25)),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Row(
-            children: [
-              nb('≡ Меню', onTap: () => setState(() => _burgerOpen = !_burgerOpen)),
-              nb('Гильдия', onTap: () => _openModule('Гильдия')),
-              nb('Таверна', onTap: () => _openModule('Таверна')),
-              nb('💰Лавка', onTap: () => _openModule('Лавка')),
-              nb('Боссы', onTap: () => _openModule('Боссы')),
-              nb('🗺️ Карта', onTap: () => _openModule('Карта')),
-            ],
+          nb('≡ Меню', onTap: () => setState(() => _burgerOpen = !_burgerOpen)),
+          nb('🏰 Гильдия', onTap: () => _openModule('Гильдия')),
+          nb('🍸 Таверна', onTap: () => _openModule('Таверна')),
+          nb('💰Лавка', onTap: () => _openModule('Лавка')),
+          nb('🍾 Боссы', onTap: () => _openModule('Боссы')),
+          nb('🗺️ Карта', onTap: () => _openModule('Карта')),
+          Expanded(
+            child: Center(
+              child: Text(
+                _lastMessage,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Colors.white, fontSize: 11),
+              ),
+            ),
           ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  _lastMessage,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+          nb('Чат', onTap: () => _openModule('Чат')),
+          const SizedBox(width: 6),
+          StreamBuilder<int>(
+            stream: ChatService.instance.onlineCount(),
+            builder: (context, snap) {
+              final online = snap.data ?? 1;
+              return Text('Онлайн $online',
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 11),
-                ),
-              ),
-              nb('Чат', onTap: () => _openModule('Чат')),
-              StreamBuilder<int>(
-                stream: ChatService.instance.onlineCount(),
-                builder: (context, snap) {
-                  final online = snap.data ?? 1;
-                  return Text('Онлайн $online',
-                      style: const TextStyle(
-                          color: kGoldColor, fontSize: 13));
-                },
-              ),
-            ],
+                      color: kGoldColor, fontSize: 13));
+            },
           ),
         ],
       ),
@@ -389,6 +384,7 @@ class _MainScreenState extends State<MainScreen>
         PlayerRepository.instance.applyData(null);
         await FirebaseAuth.instance.signOut();
         await GoogleSignIn().signOut();
+        AudioManager.instance.startLoginMusic();
       }),
     ];
     return GestureDetector(

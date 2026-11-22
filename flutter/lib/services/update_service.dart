@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:open_filex/open_filex.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 /// In-app updater: checks GitHub Releases and installs newer APKs.
 class UpdateService {
@@ -104,6 +105,13 @@ class UpdateService {
     sink.close();
     client.close(force: true);
     return file;
+  }
+
+  /// Разрешение на установку из неизвестных источников — просим ДО загрузки,
+  /// чтобы скачивание не прерывалось посередке.
+  Future<bool> requestInstallPermission() async {
+    final status = await Permission.requestInstallPackages.request();
+    return status.isGranted;
   }
 
   Future<void> install(File apk) async {

@@ -121,15 +121,25 @@ class _ChatScreenState extends State<ChatScreen>
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('chat')
-                  .where('tab', isEqualTo: _tab)
                   .orderBy('created_at', descending: true)
-                  .limit(60)
+                  .limit(200)
                   .snapshots(),
               builder: (context, snap) {
+                if (snap.hasError) {
+                  return Center(
+                    child: Text('Ошибка чата: ${snap.error}',
+                        style: const TextStyle(
+                            color: Colors.redAccent, fontSize: 12)),
+                  );
+                }
                 if (!snap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                final docs = snap.data!.docs;
+                final docs = snap.data!.docs
+                    .where((d) =>
+                        (d.data() as Map<String, dynamic>?)?['tab'] == _tab)
+                    .take(60)
+                    .toList();
                 return ListView.builder(
                   controller: _scroll,
                   padding: const EdgeInsets.all(10),

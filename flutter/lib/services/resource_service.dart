@@ -111,15 +111,23 @@ class ResourceService {
 
     final bytes = await file.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
+    final fresh = Directory('${_base!.parent.path}/game_resources_fresh');
+    if (fresh.existsSync()) fresh.deleteSync(recursive: true);
+    fresh.createSync(recursive: true);
     for (final entry in archive) {
       if (entry.isFile) {
         final name = entry.name.replaceAll('\\', '/');
         if (name.contains('..')) continue;
-        final out = File('${_base!.path}/$name');
+        final out = File('${fresh.path}/$name');
         await out.parent.create(recursive: true);
         await out.writeAsBytes(entry.content as List<int>);
       }
     }
+    final old = Directory('${_base!.parent.path}/game_resources_old');
+    if (old.existsSync()) old.deleteSync(recursive: true);
+    await _base!.rename(old.path);
+    await fresh.rename(_base!.path);
+    if (old.existsSync()) old.deleteSync(recursive: true);
     await File('${_base!.path}/resources-version.txt')
         .writeAsString(_remoteResVersion);
     _resourceVersion = _remoteResVersion;
