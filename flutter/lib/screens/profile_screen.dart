@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/game_data.dart';
 import '../main.dart';
 import '../services/player_repository.dart';
+import '../services/resource_service.dart';
+import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -109,12 +111,45 @@ class ProfileScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                kv('🎰 Уровень:', '${player.level}'),
-                const SizedBox(width: 14),
-                kv('❤️ HP:', '$finalHp/$finalHp'),
-                const SizedBox(width: 14),
-                kv('🧪 Мана:', '$finalMana/$finalMana'),
+                Container(
+                  width: 90,
+                  height: 120,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: kGoldColor, width: 2),
+                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0x33221D18),
+                  ),
+                  child: (data['look']?.toString() ?? '').isNotEmpty &&
+                          ResourceService.instance
+                                  .filePath(data['look'].toString()) !=
+                              null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: GameImage(data['look'].toString(),
+                              fit: BoxFit.cover),
+                        )
+                      : const Center(
+                          child: Text('🧍',
+                              style: TextStyle(
+                                  fontSize: 32,
+                                  color: Colors.white24)),
+                        ),
+                ),
+                Expanded(
+                  child: Wrap(
+                    runSpacing: 4,
+                    children: [
+                      kv('🎰 Уровень:', '${player.level}'),
+                      const SizedBox(width: 14),
+                      kv('❤️ HP:', '$finalHp/$finalHp'),
+                      const SizedBox(width: 14),
+                      kv('🧪 Мана:', '$finalMana/$finalMana'),
+                    ],
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 10),

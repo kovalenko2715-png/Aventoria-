@@ -8,6 +8,7 @@ import '../services/chat_service.dart';
 import '../main.dart';
 import '../services/player_repository.dart';
 import '../widgets/module_window.dart';
+import '../widgets/nickname_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -59,6 +60,10 @@ class _ChatScreenState extends State<ChatScreen>
   }
 
   Future<void> _send() async {
+    if (PlayerRepository.instance.nicknameMissing) {
+      await showNicknameDialog(context);
+      if (PlayerRepository.instance.nicknameMissing) return;
+    }
     final text = _input.text.trim();
     if (text.isEmpty) return;
     _input.clear();

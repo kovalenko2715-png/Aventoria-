@@ -6,11 +6,17 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:flutter/services.dart' show SystemNavigator;
+import 'package:flutter/services.dart'
+    show
+        DeviceOrientation,
+        SystemChrome,
+        SystemUiMode,
+        SystemNavigator;
 
 import 'screens/auth_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/audio_manager.dart';
+import 'services/player_repository.dart';
 import 'services/resource_service.dart';
 import 'services/update_service.dart';
 import 'widgets/godot_viewport.dart';
@@ -19,6 +25,15 @@ const kGoldColor = Color(0xFFFFD700);
 const kRuneBlue = Color(0xFF80CCFF);
 const kDarkBackground = Color(0xFF151515);
 const kPanelColor = Color(0xFF1E1E1E);
+
+TextScaler gameTextScaler() {
+  final v = PlayerRepository
+          .instance.data?['settings_ui_font']
+          ?.toString() ??
+      'medium';
+  const scales = {'small': 0.9, 'medium': 1.0, 'large': 1.15};
+  return TextScaler.linear(scales[v] ?? 1.0);
+}
 
 void _errorScreen(Object error, Object? stack) {
   runApp(Directionality(
@@ -43,6 +58,11 @@ void _errorScreen(Object error, Object? stack) {
 Future<void> main() async {
   return runZonedGuarded(() async {
     WidgetsFlutterBinding.ensureInitialized();
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
     ErrorWidget.builder = (FlutterErrorDetails details) {
       return Directionality(
         textDirection: TextDirection.ltr,
@@ -593,7 +613,13 @@ class _AventoriaAppState extends State<AventoriaApp> {
           foregroundColor: Colors.white,
         ),
       ),
-      builder: (context, child) => GodotViewport(child: child!),
+      builder: (context, child) => ListenableBuilder(
+        listenable: PlayerRepository.instance,
+        builder: (context, _) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: gameTextScaler()),
+          child: GodotViewport(child: child!),
+        ),
+      ),
       home: switch (_stage) {
         _BootStage.boot =>
             _BootScreen(label: _bootLabel, seconds: _bootSeconds),

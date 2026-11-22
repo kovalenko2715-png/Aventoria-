@@ -20,7 +20,8 @@ class ModuleWindow extends StatelessWidget {
       type: MaterialType.transparency,
       child: MediaQuery(
         data: MediaQuery.of(context).copyWith(
-          textScaler: const TextScaler.linear(0.85),
+          textScaler: TextScaler.linear(
+              MediaQuery.of(context).textScaler.scale(1.0) * 0.85),
         ),
         child: Container(
         decoration: BoxDecoration(

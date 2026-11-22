@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../data/game_data.dart';
 import '../main.dart';
 import '../services/player_repository.dart';
+import '../services/resource_service.dart';
+import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 
 Map<String, dynamic> _itemInfo(Map<String, dynamic> instance) {
@@ -11,16 +13,34 @@ Map<String, dynamic> _itemInfo(Map<String, dynamic> instance) {
   if (fromDb != null) return fromDb;
   return {
     'name': instance['name']?.toString() ?? id,
-    'icon': instance['icon']?.toString() ?? '📦',
+    'icon': instance['icon']?.toString() ?? '📤',
     'type': instance['type']?.toString() ?? 'material',
     'level': instance['level'] ?? 1,
     'description': instance['description']?.toString() ?? 'Трофей.',
     'durability': instance['durability'] ?? -1,
     'price': instance['price'] ?? 0,
-    'requirements': const {},
+    'requirements': instance['requirements'] ?? const {},
     'bonuses': instance['bonuses'] ?? const {},
   };
 }
+
+const Color _okColor = Color(0xFF00FF00);
+const Color _badColor = Color(0xFFFF0000);
+const Color _bonusColor = Color(0xFF80FF80);
+
+const Map<String, String> _bonusNames = {
+  'attack': 'Атака',
+  'defense': 'Защита',
+  'hp_restore': 'Восстановление HP',
+  'mana_restore': 'Восстановление маны',
+  'max_hp': 'Максимум HP',
+  'crit_chance': 'Шанс крита',
+  'crit_damage': 'Крит. урон',
+  'evasion': 'Уклонение',
+  'magic_find': 'Маг. фаинд',
+  'exp_bonus': 'Бонус опыта',
+  'gold_bonus': 'Бонус золота',
+};
 
 class InventoryScreen extends StatelessWidget {
   const InventoryScreen({super.key});
@@ -48,28 +68,79 @@ class InventoryScreen extends StatelessWidget {
     'rune': 'Руна',
   };
 
-  Future<void> _action(
-      BuildContext context, String text, VoidCallback onYes) {
-    return showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        content: Text(text,
-            style: const TextStyle(color: Colors.white, fontSize: 13)),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Отмена',
-                  style: TextStyle(color: Colors.white70))),
-          TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                onYes();
-              },
-              child: const Text('Да', style: TextStyle(color: kGoldColor))),
-        ],
-      ),
-    );
+  bool _canEquip(Map<String, dynamic> info) {
+    final player = PlayerRepository.instance;
+    if ((info['type']?.toString() ?? '') != 'equipment') return false;
+    final playerLevel =
+        (player.data?['level'] as num?)?.toInt() ?? 1;
+    final itemLevel = (info['level'] as num?)?.toInt() ?? 1;
+    if (playerLevel < itemLevel) return false;
+    final stats = player.statsMap;
+    final reqs = (info['requirements'] as Map<String, dynamic>?) ?? const {};
+    for (final key in reqs.keys) {
+      final need = (reqs[key] as num?)?.toInt() ?? 0;
+      final have = (stats[key] as num?)?.toInt() ?? 0;
+      if (have < need) return false;
+    }
+    return true;
+  }
+
+  List<dynamic> _inventoryWithout(List<dynamic> inv, int index, int count) {
+    final entry =
+        (inv[index] as Map<String, dynamic>? ?? const {}).cast<String, dynamic>();
+    final qty = (entry['quantity'] as num?)?.toInt() ?? 1;
+    final newInv = List<dynamic>.from(inv);
+    if (qty - count <= 0) {
+      newInv.removeAt(index);
+    } else {
+      newInv[index] = {...entry, 'quantity': qty - count};
+    }
+    return newInv;
+  }
+
+  Future<void> _consumeItem(
+      BuildContext context, int index, Map<String, dynamic> info) async {
+    final player = PlayerRepository.instance;
+    final inv = _inventoryWithout(player.inventory, index, 1);
+    await player.replaceInventory(inv);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Использовано: ${info['name']}')));
+    }
+  }
+
+  Future<void> _placeInQuickSlot(
+      BuildContext context, int index, Map<String, dynamic> info) async {
+    final player = PlayerRepository.instance;
+    final equipment =
+        Map<String, dynamic>.from(player.data?['equipment'] ?? const {});
+    final entry = (player.inventory[index] as Map<String, dynamic>? ?? const {})
+        .cast<String, dynamic>();
+    String? target;
+    for (var i = 0; i < 4; i++) {
+      if (equipment['quick$i'] == null) {
+        target = 'quick$i';
+        break;
+      }
+    }
+    if (target == null) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Слоты расходников заняты')));
+      }
+      return;
+    }
+    equipment[target] = {
+      'id': entry['id'],
+      'quantity': (entry['quantity'] as num?)?.toInt() ?? 1,
+      'icon': info['icon'],
+      'name': info['name'],
+    };
+    await player.replaceEquipment(equipment);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('${info['name']} → в слот расходников')));
+    }
   }
 
   Future<void> _equip(BuildContext context, int index,
@@ -117,19 +188,203 @@ class InventoryScreen extends StatelessWidget {
     await player.replaceEquipment(equipment);
   }
 
-  Future<void> _sell(BuildContext context, int index,
-      Map<String, dynamic> instance, Map<String, dynamic> info) async {
+  Future<void> _drop(BuildContext context, int index) async {
     final player = PlayerRepository.instance;
-    final fullPrice = (info['price'] as num?)?.toInt() ?? 0;
-    final price = fullPrice ~/ 2;
-    if (price <= 0) return;
-    final newInv = List<dynamic>.from(player.inventory)..removeAt(index);
-    await player.replaceInventory(newInv);
-    await player.spendCurrency(gold: -price, rune: 0);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Продано «${info['name']}» за $price 💰')));
-    }
+    final inv = _inventoryWithout(player.inventory, index, 1);
+    await player.replaceInventory(inv);
+  }
+
+  void _showItemDetail(
+    BuildContext context, {
+    required Map<String, dynamic> instance,
+    required Map<String, dynamic> info,
+    required bool equipped,
+    dynamic equippedItem,
+    int? index,
+    String? slotKey,
+  }) {
+    final player = PlayerRepository.instance;
+    final playerLevel = (player.data?['level'] as num?)?.toInt() ?? 1;
+    final itemLevel = (info['level'] as num?)?.toInt() ?? 1;
+    final reqs = (info['requirements'] as Map<String, dynamic>?) ?? const {};
+    final bonuses = (info['bonuses'] as Map<String, dynamic>?) ?? const {};
+    final stats = player.statsMap;
+    final type = info['type']?.toString() ?? '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 440,
+          constraints: const BoxConstraints(maxHeight: 430),
+          decoration: BoxDecoration(
+            color: const Color(0xFA1A1A1A),
+            border: Border.all(color: kGoldColor.withOpacity(0.8), width: 2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(info['icon']?.toString() ?? '📤',
+                            style: const TextStyle(fontSize: 30)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(info['name']?.toString() ?? '',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: kGoldColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600)),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Уровень предмета: $itemLevel',
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 14)),
+                    const SizedBox(height: 2),
+                    Text('Ваш уровень: $playerLevel / $itemLevel',
+                        style: TextStyle(
+                            color: playerLevel >= itemLevel
+                                ? _okColor
+                                : _badColor,
+                            fontSize: 14)),
+                    if (reqs.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      const Text('Требования:',
+                          style: TextStyle(
+                              color: kGoldColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      for (final key in reqs.keys)
+                        () {
+                          final need =
+                              (reqs[key] as num?)?.toInt() ?? 0;
+                          final have =
+                              (stats[key] as num?)?.toInt() ?? 0;
+                          final ok = have >= need;
+                          return Text(
+                              '${playerStatNames[key] ?? key}: $have / $need',
+                              style: TextStyle(
+                                  color: ok ? _okColor : _badColor,
+                                  fontSize: 14));
+                        }(),
+                    ],
+                    if (bonuses.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      const Text('Бонусы:',
+                          style: TextStyle(
+                              color: kGoldColor,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600)),
+                      for (final key in bonuses.keys)
+                        Text(
+                            '${_bonusNames[key] ?? key}: +${bonuses[key]}',
+                            style: const TextStyle(
+                                color: _bonusColor, fontSize: 14)),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(info['description']?.toString() ?? '',
+                        softWrap: true,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13)),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (equipped)
+                          _detailButton('СНЯТЬ', () {
+                            Navigator.pop(ctx);
+                            _unequip(
+                                context, slotKey!, equippedItem ?? instance);
+                          })
+                        else ...[
+                          if (type == 'equipment')
+                            _detailButton(
+                                'НАДЕТЬ',
+                                index == null
+                                    ? null
+                                    : () {
+                                        Navigator.pop(ctx);
+                                        _equip(
+                                            context, index, instance, info);
+                                      },
+                                disabled: !_canEquip(info)),
+                          if (type == 'consumable' &&
+                              bonuses.containsKey('hp_restore'))
+                            _detailButton('ИСПОЛЬЗОВАТЬ', index == null
+                                ? null
+                                : () {
+                                    Navigator.pop(ctx);
+                                    _consumeItem(
+                                        context, index, info);
+                                  }),
+                          if (type == 'consumable' &&
+                              !bonuses.containsKey('hp_restore'))
+                            _detailButton('В СЛОТ', index == null
+                                ? null
+                                : () {
+                                    Navigator.pop(ctx);
+                                    _placeInQuickSlot(
+                                        context, index, info);
+                                  }),
+                          _detailButton('ВЫБРОСИТЬ', index == null
+                              ? null
+                              : () {
+                                  Navigator.pop(ctx);
+                                  _drop(context, index);
+                                }),
+                        ],
+                        const SizedBox(width: 10),
+                        _detailButton('ОТМЕНА', () => Navigator.pop(ctx)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    );
+  }
+
+  Widget _detailButton(String label, VoidCallback? onPressed,
+      {bool disabled = false}) {
+    final enabled = onPressed != null && !disabled;
+    return SizedBox(
+      height: 35,
+      child: TextButton(
+        onPressed: enabled ? onPressed : null,
+        style: TextButton.styleFrom(
+          backgroundColor:
+              enabled ? const Color(0xFF2A2A2A) : Colors.transparent,
+          side: BorderSide(
+              color: enabled
+                  ? kGoldColor.withOpacity(0.7)
+                  : Colors.white24),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+        child: Text(label,
+            style: TextStyle(
+                color: enabled ? Colors.white : Colors.white30,
+                fontSize: 13,
+                fontWeight: FontWeight.w600)),
+      ),
+    );
   }
 
   Widget _slot(BuildContext context, String slotKey, double size) {
@@ -145,10 +400,15 @@ class InventoryScreen extends StatelessWidget {
       children: [
         InkWell(
           onTap: has
-              ? () => _action(
+              ? () => _showItemDetail(
                   context,
-                  'Снять «${info0['name']}»?',
-                  () => _unequip(context, slotKey, equipped))
+                  instance: equipped is Map<String, dynamic>
+                      ? equipped
+                      : const {},
+                  info: info0,
+                  equipped: true,
+                  equippedItem: equipped,
+                  slotKey: slotKey)
               : null,
           customBorder: const CircleBorder(),
           child: Container(
@@ -182,34 +442,21 @@ class InventoryScreen extends StatelessWidget {
       Map<String, dynamic> instance) {
     final info = _itemInfo(instance);
     final qty = (instance['quantity'] as num?)?.toInt() ?? 1;
-    final type = info['type']?.toString() ?? '';
     return GestureDetector(
-      onTap: () {
-        if (type == 'equipment') {
-          _action(context, 'Надеть «${info['name']}»?',
-              () => _equip(context, index, instance, info));
-        } else if (type == 'consumable') {
-          _action(context, 'Использовать «${info['name']}»?', () async {
-            final p = PlayerRepository.instance;
-            final inv = List<dynamic>.from(p.inventory)..removeAt(index);
-            await p.replaceInventory(inv);
-          });
-        } else if (((info['price'] as num?)?.toInt() ?? 0) > 0) {
-          _action(
-              context,
-              'Продать «${info['name']}» за ${((info['price'] as num?)?.toInt() ?? 0) ~/ 2} золота?',
-              () => _sell(context, index, instance, info));
-        }
-      },
+      onTap: () => _showItemDetail(context,
+          instance: instance,
+          info: info,
+          equipped: false,
+          index: index),
       child: Container(
-        width: 72,
-        height: 80,
+        width: 95,
+        height: 105,
         decoration: BoxDecoration(
           border: Border.all(color: kGoldColor.withOpacity(0.55)),
           borderRadius: BorderRadius.circular(8),
           color: const Color(0x33221D18),
         ),
-        padding: const EdgeInsets.all(3),
+        padding: const EdgeInsets.all(4),
         child: Stack(
           children: [
             Positioned(
@@ -220,19 +467,19 @@ class InventoryScreen extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 8)),
+                      color: Colors.white, fontSize: 11)),
             ),
             Center(
-              child: Text(info['icon']?.toString() ?? '📦',
-                  style: const TextStyle(fontSize: 24)),
+              child: Text(info['icon']?.toString() ?? '📤',
+                  style: const TextStyle(fontSize: 26)),
             ),
             if (qty > 1)
               Positioned(
                 bottom: 0,
-                right: 1,
+                right: 2,
                 child: Text('x$qty',
                     style: const TextStyle(
-                        color: Colors.white, fontSize: 9)),
+                        color: Colors.white, fontSize: 11)),
               ),
           ],
         ),
@@ -246,6 +493,7 @@ class InventoryScreen extends StatelessWidget {
     final inventory = player.inventory;
     final equipment =
         (player.data?['equipment'] as Map<String, dynamic>?) ?? {};
+    final look = player.data?['look']?.toString() ?? '';
 
     Widget equipColumn() {
       return Column(
@@ -285,10 +533,18 @@ class InventoryScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                   color: const Color(0x33221D18),
                 ),
-                child: const Center(
-                  child: Text('🧍',
-                      style: TextStyle(fontSize: 40, color: Colors.white24)),
-                ),
+                child: look.isNotEmpty &&
+                        ResourceService.instance.filePath(look) != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child:
+                            GameImage(look, fit: BoxFit.cover))
+                    : const Center(
+                        child: Text('🧍',
+                            style: TextStyle(
+                                fontSize: 40,
+                                color: Colors.white24)),
+                      ),
               ),
               const SizedBox(width: 4),
               Column(
@@ -393,17 +649,27 @@ class InventoryScreen extends StatelessWidget {
                                     color: Colors.white54, fontSize: 13)),
                           )
                         else
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              for (var i = 0; i < inventory.length; i++)
-                                _itemCell(context, i,
-                                    inventory[i] as Map<String, dynamic>? ??
-                                        const {}),
-                            ],
-                          ),
+                          LayoutBuilder(builder: (context, c) {
+                            final cellW = 95 + 8;
+                            final cols =
+                                (c.maxWidth / cellW).floor().clamp(1, 6);
+                            return GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: cols,
+                                      mainAxisSpacing: 8,
+                                      crossAxisSpacing: 8,
+                                      childAspectRatio: 95 / 105),
+                              itemCount: inventory.length,
+                              itemBuilder: (context, i) => _itemCell(
+                                  context,
+                                  i,
+                                  inventory[i] as Map<String, dynamic>? ??
+                                      const {}),
+                            );
+                          }),
                       ],
                     ),
                   ),

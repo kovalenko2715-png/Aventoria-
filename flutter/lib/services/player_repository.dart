@@ -38,11 +38,43 @@ class PlayerRepository extends ChangeNotifier {
   Map<String, dynamic>? get data => _data;
   bool get isLoaded => _loaded;
 
-  int get gold => (data?['gold'] as num?)?.toInt() ?? 1000;
-  int get rune => (data?['rune'] as num?)?.toInt() ?? 50;
+  int get gold => (data?['gold'] as num?)?.toInt() ?? 200;
+  int get rune => (data?['rune'] as num?)?.toInt() ?? 0;
   int get level => (data?['level'] as num?)?.toInt() ?? 1;
   String get name => data?['name'] as String? ?? 'Герой';
   String? get uid => FirebaseAuth.instance.currentUser?.uid;
+
+  bool get nicknameMissing {
+    if (!_loaded) return false;
+    if ((data?['nickname_set'] as bool?) == true) return false;
+    final n = (data?['name'] as String? ?? '').trim();
+    return n.isEmpty || n == 'Герой';
+  }
+
+  Future<bool> claimNickname(String nick) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final clean = nick.trim();
+    if (clean.length < 3 || clean.length > 16) return false;
+    final db = FirebaseFirestore.instance;
+    final taken = await db
+        .collection('users')
+        .where('name', isEqualTo: clean)
+        .limit(1)
+        .get();
+    if (taken.docs.isNotEmpty) return false;
+    _data = {...?_data, 'name': clean, 'nickname_set': true};
+    notifyListeners();
+    await db
+        .collection('users')
+        .doc(user.uid)
+        .update({'name': clean, 'nickname_set': true});
+    await db.collection('presence').doc(user.uid).set({
+      'name': clean,
+      'last_seen': DateTime.now().millisecondsSinceEpoch,
+    }, SetOptions(merge: true));
+    return true;
+  }
 
   Future<void> loadOrCreate(User user) async {
     final db = FirebaseFirestore.instance;
@@ -57,8 +89,9 @@ class PlayerRepository extends ChangeNotifier {
       final fresh = <String, dynamic>{
         'name': nick.isEmpty ? 'Герой' : nick,
         'email': email,
-        'gold': 1000,
-        'rune': 50,
+        'gold': 200,
+        'rune': 0,
+        'nickname_set': false,
         'stat_points': 15,
         'level': 1,
         'gender': 'Не указан',
@@ -69,7 +102,9 @@ class PlayerRepository extends ChangeNotifier {
         'stats': _defaultStats,
         'elements': _defaultElements,
         'stats_pvp': _defaultStatsPvp,
-        'inventory': <dynamic>[],
+        'inventory': <dynamic>[
+          {'id': 'health_potion', 'quantity': 2, 'icon': '🧪'},
+        ],
         'equipment': <String, dynamic>{},
         'quick_slots': <dynamic>[null, null, null, null],
         'guild_quest_points': 0,

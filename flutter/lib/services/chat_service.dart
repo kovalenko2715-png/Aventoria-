@@ -51,4 +51,43 @@ class ChatService {
       .snapshots()
       .map((s) => s.docs.length)
       .handleError((_) => 0);
+
+  Stream<int> unreadCount() {
+    final lastRead =
+        (PlayerRepository.instance.data?['chat_last_read'] as num?)
+                ?.toInt() ??
+            0;
+    return FirebaseFirestore.instance
+        .collection('chat')
+        .orderBy('created_at', descending: true)
+        .limit(60)
+        .snapshots()
+        .map((s) {
+      var n = 0;
+      for (final d in s.docs) {
+        final ts = (d['created_at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        if (ts > lastRead) n++;
+      }
+      return n;
+    }).handleError((_) => 0);
+  }
+
+  Future<void> markChatRead() async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('chat')
+          .orderBy('created_at', descending: true)
+          .limit(1)
+          .get();
+      var latest = DateTime.now().millisecondsSinceEpoch;
+      if (snap.docs.isNotEmpty) {
+        final ts = snap.docs.first['created_at'];
+        if (ts is Timestamp) latest = ts.millisecondsSinceEpoch;
+      }
+      await PlayerRepository.instance.replaceField(
+        'chat_last_read',
+        latest + 1,
+      );
+    } catch (_) {}
+  }
 }

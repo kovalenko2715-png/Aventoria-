@@ -2,19 +2,19 @@ import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 
 import '../main.dart';
-import '../services/audio_manager.dart';
 import '../services/chat_service.dart';
 import '../services/player_repository.dart';
 import '../widgets/game_image.dart';
+import '../widgets/nickname_dialog.dart';
 import 'arena_screen.dart';
 import 'auction_screen.dart';
 import 'bosses_screen.dart';
 import 'chat_screen.dart';
 import 'guild_screen.dart';
 import 'inventory_screen.dart';
+import 'looks_screen.dart';
 import 'mail_screen.dart';
 import 'market_screen.dart';
 import 'map_screen.dart';
@@ -86,6 +86,9 @@ class _MainScreenState extends State<MainScreen>
             ' (${e.toString()})';
       }
     }
+    if (_player.isLoaded && _player.nicknameMissing && mounted) {
+      await showNicknameDialog(context);
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -103,7 +106,7 @@ class _MainScreenState extends State<MainScreen>
             type: MaterialType.transparency,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 70, 14, 62),
+                padding: const EdgeInsets.fromLTRB(14, 92, 14, 62),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: screen,
@@ -164,10 +167,15 @@ class _MainScreenState extends State<MainScreen>
         push(const MailScreen());
         return;
       case 'Чат':
+        ChatService.instance.markChatRead();
         push(const ChatScreen());
+        ChatService.instance.markChatRead();
         return;
       case 'Настройки':
         push(const SettingsScreen());
+        return;
+      case 'Облики':
+        push(const LooksScreen());
         return;
     }
     setState(() {
@@ -207,7 +215,7 @@ class _MainScreenState extends State<MainScreen>
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
-                  top: 70,
+                  top: 84,
                   bottom: 56,
                   child: _contentArea(),
                 ),
@@ -237,7 +245,7 @@ class _MainScreenState extends State<MainScreen>
         : (email.contains('@') ? email.split('@').first : 'Игрок');
     return Container(
       color: const Color(0xB31A1A1A),
-      height: 64,
+      height: 78,
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: SafeArea(
@@ -340,18 +348,57 @@ class _MainScreenState extends State<MainScreen>
           nb('💰Лавка', onTap: () => _openModule('Лавка')),
           nb('🍾 Боссы', onTap: () => _openModule('Боссы')),
           nb('🗺️ Карта', onTap: () => _openModule('Карта')),
-          Expanded(
-            child: Center(
-              child: Text(
-                _lastMessage,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 11),
-              ),
-            ),
+          StreamBuilder<int>(
+            stream: ChatService.instance.unreadCount(),
+            builder: (context, snap) {
+              final unread = snap.data ?? 0;
+              return Expanded(
+                child: Center(
+                  child: FadeTransition(
+                    opacity: unread > 0
+                        ? curvedPulse
+                        : const AlwaysStoppedAnimation(1.0),
+                    child: Text(
+                      _lastMessage,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: unread > 0 ? kGoldColor : Colors.white,
+                          fontSize: 11),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          nb('Чат', onTap: () => _openModule('Чат')),
+          StreamBuilder<int>(
+            stream: ChatService.instance.unreadCount(),
+            builder: (context, snap) {
+              final unread = snap.data ?? 0;
+              return Flexible(
+                child: FadeTransition(
+                  opacity: unread > 0
+                      ? curvedPulse
+                      : const AlwaysStoppedAnimation(1.0),
+                  child: TextButton(
+                    onPressed: () => _openModule('Чат'),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      minimumSize: const Size(0, 40),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    child: Text(
+                      unread > 0 ? 'Чат ($unread)' : 'Чат',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: kGoldColor, fontSize: 13),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           const SizedBox(width: 6),
           StreamBuilder<int>(
             stream: ChatService.instance.onlineCount(),
@@ -380,12 +427,6 @@ class _MainScreenState extends State<MainScreen>
       ('Задания', moduleAction('Задания')),
       ('Почта', moduleAction('Почта')),
       ('Настройки', moduleAction('Настройки')),
-      ('← Выход', () async {
-        PlayerRepository.instance.applyData(null);
-        await FirebaseAuth.instance.signOut();
-        await GoogleSignIn().signOut();
-        AudioManager.instance.startLoginMusic();
-      }),
     ];
     return GestureDetector(
       onTap: () => setState(() => _burgerOpen = false),

@@ -48,6 +48,29 @@ class ResourceService {
     return f.existsSync() ? f.path : null;
   }
 
+  List<String> listLooks() {
+    final base = _base;
+    if (base == null) return const [];
+    final dir = Directory('${base.path}/images/looks');
+    if (!dir.existsSync()) return const [];
+    try {
+      final names = dir
+          .listSync()
+          .whereType<File>()
+          .map((f) => f.path.replaceAll('\\', '/').split('/').last)
+          .where((n) => n.toLowerCase().endsWith('.png') ||
+              n.toLowerCase().endsWith('.jpg') ||
+              n.toLowerCase().endsWith('.jpeg') ||
+              n.toLowerCase().endsWith('.webp'))
+          .map((n) => 'images/looks/$n')
+          .toList()
+        ..sort();
+      return names;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   Future<void> checkRemote() async {
     final client = HttpClient();
     final req =
