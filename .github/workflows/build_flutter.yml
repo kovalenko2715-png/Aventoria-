@@ -77,8 +77,7 @@ jobs:
         run: |
           VER=$(grep '^version:' flutter/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
           TAG="v$VER"
-          NOTES="Сборка #$GITHUB_RUN_NUMBER ($GITHUB_SHA)
-commit: $GITHUB_SHA"
+          NOTES=$(printf 'Сборка #%s (%s)\ncommit: %s' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" "$GITHUB_SHA")
           APK=flutter/build/app/outputs/flutter-apk/app-release.apk
           if gh release create "$TAG" "$APK" /home/runner/aventoria-resources.zip /home/runner/resources-version.txt \
             --title "Aventoria $TAG" --notes "$NOTES"; then
@@ -90,9 +89,7 @@ commit: $GITHUB_SHA"
               CODE_CHANGED=$(git diff --name-only "$OLD_COMMIT" "$GITHUB_SHA" -- flutter/lib flutter/android flutter/pubspec.yaml | wc -l)
               if [ "$CODE_CHANGED" -gt 0 ]; then
                 BODY=$(gh release view "$TAG" --json body -q .body)
-                gh release edit "$TAG" --notes "$BODY
-
-⚠️ ВНИМАНИЕ: в этой сборке изменился КОД игры, но версия в pubspec не поднята — игроки НЕ получат APK! Подними version: и пересобери."
+                gh release edit "$TAG" --notes "$(printf '%s\n\n⚠️ ВНИМАНИЕ: в этой сборке изменился КОД игры, но версия в pubspec не поднята — игроки НЕ получат APK! Подними version: и пересобери.' "$BODY")"
                 echo "::warning::Code changed but pubspec version not bumped — clients will not see the APK update"
               fi
             fi
