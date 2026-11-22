@@ -87,7 +87,7 @@ class _MainScreenState extends State<MainScreen>
     if (mounted) setState(() => _loading = false);
   }
 
-  void _openModule(String title, {bool isBattles = false}) {
+  void _openModule(String title) {
     Future<void> push(Widget screen) async {
       await Navigator.push(
         context,
@@ -213,18 +213,17 @@ class _MainScreenState extends State<MainScreen>
         bottom: false,
         child: Row(
           children: [
-            Image.asset('assets/images/ui/gold_icon.png',
-                width: 28, height: 28),
-            const SizedBox(width: 4),
             const Text('Золото',
                 style: TextStyle(
                     color: kGoldColor,
                     fontSize: 14,
                     fontWeight: FontWeight.w600)),
-            const SizedBox(width: 4),
+            Image.asset('assets/images/ui/gold_icon.png',
+                width: 28, height: 28),
             Text('$gold',
                 style:
                     const TextStyle(color: kGoldColor, fontSize: 16)),
+            const SizedBox(width: 14),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 90),
               child: FittedBox(
@@ -250,11 +249,15 @@ class _MainScreenState extends State<MainScreen>
             const SizedBox(width: 10),
             Text('$rune',
                 style: const TextStyle(color: kRuneBlue, fontSize: 16)),
+            Image.asset('assets/images/ui/rune_icon.png',
+                width: 26, height: 26),
             const SizedBox(width: 2),
             FadeTransition(
               opacity: curvedPulse,
-              child: Image.asset('assets/images/ui/rune_icon.png',
-                  width: 26, height: 26),
+              child: const Text('Забытые руны',
+                  style: TextStyle(
+                      color: kRuneBlue, fontSize: 13,
+                      fontWeight: FontWeight.w600)),
             ),
             const SizedBox(width: 4),
           ],
@@ -269,44 +272,7 @@ class _MainScreenState extends State<MainScreen>
   );
 
   Widget _contentArea() {
-    const modules = [
-      ('Профиль', Icons.person, Colors.teal, ''),
-      ('Таверна', Icons.local_bar, Colors.deepOrange, ''),
-      ('Гильдия', Icons.shield, kGoldColor, ''),
-      ('Задания', Icons.assignment, Colors.green, ''),
-      ('Карта', Icons.map, Colors.blue, ''),
-      ('Боссы и монстры', Icons.bolt, Colors.red, 'battles'),
-      ('Лавка', Icons.storefront, Colors.purple, ''),
-      ('Аукцион', Icons.gavel, Colors.indigo, ''),
-      ('Рюкзак', Icons.backpack, Colors.brown, ''),
-      ('Почта', Icons.mail, Colors.cyan, ''),
-      ('Арена', Icons.sports_mma, Colors.pink, ''),
-      ('Кузница', Icons.handyman, Colors.amber, ''),
-    ];
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      itemCount: modules.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        final (title, icon, color, id) = modules[i];
-        return Container(
-          decoration: BoxDecoration(
-            color: const Color(0xCC1E1E1E),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: kGoldColor.withOpacity(0.35)),
-          ),
-          child: ListTile(
-            leading: Icon(icon, color: color, size: 28),
-            title: Text(title,
-                style: const TextStyle(
-                    color: Colors.white, fontSize: 16)),
-            trailing: const Icon(Icons.chevron_right,
-                color: Colors.white38),
-            onTap: () => _openModule(title, isBattles: id == 'battles'),
-          ),
-        );
-      },
-    );
+    return const SizedBox.shrink();
   }
 
   Widget _bottomNav() {
