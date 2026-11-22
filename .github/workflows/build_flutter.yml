@@ -8,6 +8,9 @@ on:
       - ".github/workflows/build_flutter.yml"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -50,3 +53,14 @@ jobs:
         with:
           name: aventoria-apk-debug
           path: flutter/build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Publish release APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER=$(grep '^version:' flutter/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          TAG="v$VER"
+          gh release create "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk \
+            --title "Aventoria $TAG" \
+            --notes "Сборка #$GITHUB_RUN_NUMBER ($GITHUB_SHA)" \
+            || gh release upload "$TAG" flutter/build/app/outputs/flutter-apk/app-release.apk --clobber
