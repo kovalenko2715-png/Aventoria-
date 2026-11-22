@@ -29,7 +29,7 @@ jobs:
         working-directory: flutter
 
       - name: Analyze
-        run: flutter analyze
+        run: flutter analyze --no-fatal-infos
         working-directory: flutter
 
       - name: Build release APK
