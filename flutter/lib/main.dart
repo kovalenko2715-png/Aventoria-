@@ -97,6 +97,8 @@ class _AventoriaAppState extends State<AventoriaApp> {
   }
 
   Future<void> _bootSteps() async {
+    _setLabel('Проверка движка...');
+    await Future<void>.delayed(const Duration(seconds: 1));
     try {
       _setLabel('Firebase...');
       await Firebase.initializeApp().timeout(const Duration(seconds: 20));
