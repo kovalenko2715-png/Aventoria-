@@ -170,15 +170,21 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           LayoutBuilder(
             builder: (context, c) {
-              final h = c.maxHeight;
-              final w = c.maxWidth;
-              return Positioned(
-                left: w * 0.2,
-                right: w * 0.2,
-                top: h * 0.55,
-                bottom: h * 0.05,
-                child: SingleChildScrollView(
-                  child: Column(
+              return Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Container(
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xE60C0A08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: kGoldColor.withOpacity(0.5)),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       _field(_email, 'Логин (email)',
@@ -259,9 +265,11 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   ],
+                    ),
                   ),
                 ),
-              );
+              ),
+            );
             },
           ),
         ],

@@ -206,10 +206,10 @@ class InventoryScreen extends StatelessWidget {
     }
 
     return ModuleWindow(
-      title: '🎒 Рюкзак',
+      title: '🎒 Инвентарь',
       child: inventory.isEmpty && equipment.isEmpty
           ? const Center(
-              child: Text('Рюкзак пуст',
+              child: Text('Инвентарь пуст',
                   style: TextStyle(color: Colors.white54, fontSize: 16)))
           : ListView(
               padding: const EdgeInsets.all(12),

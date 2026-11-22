@@ -89,9 +89,29 @@ class _MainScreenState extends State<MainScreen>
 
   void _openModule(String title) {
     Future<void> push(Widget screen) async {
+      setState(() => _burgerOpen = false);
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => screen),
+        PageRouteBuilder(
+          opaque: false,
+          barrierColor: Colors.black.withOpacity(0.45),
+          barrierDismissible: true,
+          transitionDuration: const Duration(milliseconds: 160),
+          pageBuilder: (_, __, ___) => Material(
+            type: MaterialType.transparency,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 70, 14, 122),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: screen,
+                ),
+              ),
+            ),
+          ),
+          transitionsBuilder: (_, anim, __, child) =>
+              FadeTransition(opacity: anim, child: child),
+        ),
       );
       if (mounted) setState(() {});
     }
@@ -128,7 +148,7 @@ class _MainScreenState extends State<MainScreen>
       case 'Аукцион':
         push(const AuctionScreen());
         return;
-      case 'Рюкзак':
+      case 'Инвентарь':
         push(const InventoryScreen());
         return;
       case 'Почта':
@@ -188,7 +208,9 @@ class _MainScreenState extends State<MainScreen>
                   bottom: 8,
                   child: _bottomNav(),
                 ),
-                if (_burgerOpen) _burgerPanel(w, h),
+                if (_burgerOpen &&
+                    FirebaseAuth.instance.currentUser != null)
+                  _burgerPanel(w, h),
               ],
             );
           },
@@ -352,7 +374,7 @@ class _MainScreenState extends State<MainScreen>
     final items = <(String, Future<void> Function())>[
       ('Профиль', moduleAction('Профиль')),
       ('Кузница', moduleAction('Кузница')),
-      ('Рюкзак', moduleAction('Рюкзак')),
+      ('Инвентарь', moduleAction('Инвентарь')),
       ('Аукцион', moduleAction('Аукцион')),
       ('Задания', moduleAction('Задания')),
       ('Почта', moduleAction('Почта')),
