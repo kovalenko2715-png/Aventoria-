@@ -39,8 +39,30 @@ class _AuthScreenState extends State<AuthScreen> {
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red.shade700),
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10)),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: Colors.red),
+            SizedBox(width: 8),
+            Text('Ошибка входа',
+                style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Text(message,
+              style: const TextStyle(color: Colors.white70, fontSize: 13)),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK', style: TextStyle(color: kGoldColor))),
+        ],
+      ),
     );
   }
 
@@ -79,8 +101,8 @@ class _AuthScreenState extends State<AuthScreen> {
       await _game();
     } on FirebaseAuthException catch (e) {
       _showError(_authMessage(e.code));
-    } catch (_) {
-      _showError('Ошибка соединения. Попробуйте позже');
+    } catch (e) {
+      _showError('Ошибка соединения: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -100,8 +122,8 @@ class _AuthScreenState extends State<AuthScreen> {
       await _game();
     } on FirebaseAuthException catch (e) {
       _showError(_authMessage(e.code));
-    } catch (_) {
-      _showError('Вход через Google не удался');
+    } catch (e) {
+      _showError('Вход через Google: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -155,10 +177,11 @@ class _AuthScreenState extends State<AuthScreen> {
                 right: w * 0.2,
                 top: h * 0.55,
                 bottom: h * 0.05,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    _field(_email, 'Логин (email)',
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _field(_email, 'Логин (email)',
                         Icons.mail_outline, false,
                         TextInputType.emailAddress),
                     const SizedBox(height: 10),
@@ -236,6 +259,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                   ],
+                  ),
                 ),
               );
             },
