@@ -9,6 +9,7 @@ import '../main.dart';
 import '../services/player_repository.dart';
 import '../widgets/module_window.dart';
 import '../widgets/nickname_dialog.dart';
+import '../widgets/player_profile_view.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -19,22 +20,27 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(length: 4, vsync: this);
+  late final TabController _tabs = TabController(length: 5, vsync: this);
+  late final AnimationController _blink;
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
   String _tab = 'general';
+  String? _pmTargetUid;
+  String _pmTargetName = '';
 
   static const _tabNames = {
     'general': 'Общий',
     'trade': 'Торговый',
     'guild': 'Гильдейский',
     'system': 'Система',
+    'personal': 'Личные',
   };
 
   Color get _tabColor => switch (_tab) {
         'trade' => kChatTrade,
         'guild' => kChatGuild,
         'system' => kChatSystem,
+        'personal' => kChatPersonal,
         _ => kChatGeneral,
       };
 
@@ -42,10 +48,15 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     ChatService.instance.startHeartbeat();
+    _blink = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat();
     _tabs.addListener(() {
       if (_tabs.indexIsChanging) return;
       setState(() {
         _tab = _tabNames.keys.elementAt(_tabs.index);
+        if (_tab != 'personal') _pmTargetUid = null;
       });
     });
   }
@@ -54,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen>
   void dispose() {
     ChatService.instance.stopHeartbeat();
     _tabs.dispose();
+    _blink.dispose();
     _input.dispose();
     _scroll.dispose();
     super.dispose();
@@ -66,12 +78,17 @@ class _ChatScreenState extends State<ChatScreen>
     }
     final text = _input.text.trim();
     if (text.isEmpty) return;
+    if (_tab == 'personal' && _pmTargetUid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Выбери игрока справа и «Написать»')));
+      return;
+    }
     _input.clear();
     final user = FirebaseAuth.instance.currentUser;
     final player = PlayerRepository.instance;
     final needsGuild = _tab == 'guild';
     final guild = player.data?['guild'];
-    if (needsGuild && (guild == null || guild == '—' || guild == null)) {
+    if (needsGuild && (guild == null || guild == '—')) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Вы не состоите в гильдии')));
       return;
@@ -79,10 +96,138 @@ class _ChatScreenState extends State<ChatScreen>
     await FirebaseFirestore.instance.collection('chat').add({
       'uid': user?.uid,
       'name': player.isLoaded ? player.name : 'Игрок',
+      'level': player.level,
       'tab': _tab,
       'text': text,
+      if (_tab == 'personal' && _pmTargetUid != null) ...{
+        'to_uid': _pmTargetUid,
+        'to_name': _pmTargetName,
+      },
       'created_at': FieldValue.serverTimestamp(),
     });
+  }
+
+  void _openProfile(String uid) {
+    showDialog(
+      context: context,
+      builder: (ctx) => ModuleWindow(
+        title: 'ПРОФИЛЬ ИГРОКА',
+        child: PlayerProfileView(uid: uid),
+      ),
+    );
+  }
+
+  void _openPlayerMenu(String uid, String name) {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == me) {
+      _openProfile(uid);
+      return;
+    }
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.person_outline, color: kGoldColor),
+              title: Text('Посмотреть профиль: $name',
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _openProfile(uid);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.mail_outline, color: kChatPersonal),
+              title: Text('Написать: $name',
+                  style: const TextStyle(color: Colors.white, fontSize: 13)),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                setState(() {
+                  _tabs.animateTo(4);
+                  _tab = 'personal';
+                  _pmTargetUid = uid;
+                  _pmTargetName = name;
+                });
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<QueryDocumentSnapshot<Map<String, dynamic>>> _visibleMessages(
+      QuerySnapshot<Map<String, dynamic>> snap) {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    return snap.docs.where((d) {
+      final msg = d.data();
+      if (_tab == 'personal') {
+        return msg['tab'] == 'personal' &&
+            (msg['uid'] == me || msg['to_uid'] == me);
+      }
+      return msg['tab'] == _tab;
+    }).take(60).toList();
+  }
+
+  Widget _messageRow(QueryDocumentSnapshot<Map<String, dynamic>> doc,
+      Map<String, int> ranks, double chatFontSize) {
+    final msg = doc.data();
+    final uid = msg['uid']?.toString() ?? '';
+    final name = msg['name']?.toString() ?? '???';
+    final text = msg['text']?.toString() ?? '';
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    final rank = ranks[uid] ?? 0;
+    final nameColor = nickColorForRank(rank);
+    final outgoing = _tab == 'personal' && uid == me;
+    final target = outgoing ? (msg['to_name']?.toString() ?? '???') : name;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (rank > 0)
+            FadeTransition(
+              opacity: _blink,
+              child: Text(
+                (kAdminRankNames[rank] ?? 'Админ').toUpperCase(),
+                style: TextStyle(
+                    color: nameColor, fontSize: chatFontSize - 2),
+              ),
+            ),
+          GestureDetector(
+            onTap: () => _openPlayerMenu(uid, name),
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                    fontSize: chatFontSize, color: Colors.white),
+                children: [
+                  if (outgoing)
+                    TextSpan(
+                        text: 'ты → $target: ',
+                        style: const TextStyle(color: kChatPersonal)),
+                  TextSpan(text: '$name: ',
+                      style: TextStyle(
+                          color: nameColor
+                              .withOpacity(uid == me ? 0.7 : 1.0),
+                          fontWeight: FontWeight.w600)),
+                  TextSpan(
+                      text: text,
+                      style: TextStyle(color: _tabColor)),
+                ],
+              ),
+            ),
+          ),
+          Text('уровень ${(msg['level'] as num?)?.toInt() ?? '?'}',
+              style: TextStyle(
+                  color: Colors.white54, fontSize: chatFontSize - 2.5)),
+        ],
+      ),
+    );
   }
 
   @override
@@ -94,19 +239,6 @@ class _ChatScreenState extends State<ChatScreen>
     final chatFontSize = fontSizes[fontVal] ?? 12.0;
     return ModuleWindow(
       title: '💬 Чат',
-      actions: [
-        StreamBuilder<int>(
-          stream: ChatService.instance.onlineCount(),
-          builder: (context, snap) {
-            final online = snap.data ?? 1;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text('Онлайн $online',
-                  style: const TextStyle(color: kGoldColor, fontSize: 12)),
-            );
-          },
-        ),
-      ],
       child: Column(
         children: [
           TabBar(
@@ -120,61 +252,182 @@ class _ChatScreenState extends State<ChatScreen>
               Tab(text: 'Торговый'),
               Tab(text: 'Гильдейский'),
               Tab(text: 'Система'),
+              Tab(text: 'Личные'),
             ],
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('chat')
-                  .orderBy('created_at', descending: true)
-                  .limit(200)
-                  .snapshots(),
-              builder: (context, snap) {
-                if (snap.hasError) {
-                  return Center(
-                    child: Text('Ошибка чата: ${snap.error}',
-                        style: const TextStyle(
-                            color: Colors.redAccent, fontSize: 12)),
-                  );
-                }
-                if (!snap.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final docs = snap.data!.docs
-                    .where((d) =>
-                        (d.data() as Map<String, dynamic>?)?['tab'] == _tab)
-                    .take(60)
-                    .toList();
-                return ListView.builder(
-                  controller: _scroll,
-                  padding: const EdgeInsets.all(10),
-                  itemCount: docs.length,
-                  itemBuilder: (context, i) {
-                    final msg =
-                        docs[i].data() as Map<String, dynamic>? ?? const {};
-                    final name = msg['name']?.toString() ?? '???';
-                    final text = msg['text']?.toString() ?? '';
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: RichText(
-                        text: TextSpan(
-                          style: TextStyle(
-                              fontSize: chatFontSize, color: kChatGeneral),
-                          children: [
-                            TextSpan(
-                              text: '$name: ',
-                              style: const TextStyle(
-                                  color: kGoldColor,
-                                  fontWeight: FontWeight.w600),
-                            ),
-                            TextSpan(text: text),
-                          ],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      if (_tab == 'personal')
+                        Container(
+                          width: double.infinity,
+                          color: const Color(0xFF221D18),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _pmTargetUid == null
+                                      ? 'Личные: выбери игрока справа → «Написать»'
+                                      : 'Личное для: $_pmTargetName',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      color: _pmTargetUid == null
+                                          ? Colors.white38
+                                          : kChatPersonal,
+                                      fontSize: 11),
+                                ),
+                              ),
+                              if (_pmTargetUid != null)
+                                GestureDetector(
+                                  onTap: () =>
+                                      setState(() => _pmTargetUid = null),
+                                  child: const Icon(Icons.close,
+                                      size: 14, color: Colors.white38),
+                                ),
+                            ],
+                          ),
+                        ),
+                      Expanded(
+                        child: StreamBuilder<
+                                QuerySnapshot<Map<String, dynamic>>>(
+                          stream: FirebaseFirestore.instance
+                              .collection('chat')
+                              .withConverter<Map<String, dynamic>>(
+                                  fromFirestore: (s, _) =>
+                                      s.data() ?? <String, dynamic>{},
+                                  toFirestore: (m, _) => m)
+                              .orderBy('created_at', descending: true)
+                              .limit(200)
+                              .snapshots(),
+                          builder: (context, snap0) {
+                            if (snap0.hasError) {
+                              return Center(
+                                child: Text(
+                                    'Ошибка чата: ${snap0.error}',
+                                    style: const TextStyle(
+                                        color: Colors.redAccent,
+                                        fontSize: 12)),
+                              );
+                            }
+                            if (!snap0.hasData) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final docs = _visibleMessages(snap0.data!);
+                            return StreamBuilder<Map<String, int>>(
+                              stream:
+                                  ChatService.instance.adminRanksStream(),
+                              builder: (context, ranksSnap) {
+                                final ranks = ranksSnap.data ?? const {};
+                                return ListView.builder(
+                                  controller: _scroll,
+                                  padding: const EdgeInsets.all(10),
+                                  itemCount: docs.length,
+                                  itemBuilder: (context, i) =>
+                                      _messageRow(docs[i],
+                                          ranks, chatFontSize),
+                                );
+                              },
+                            );
+                          },
                         ),
                       ),
-                    );
-                  },
-                );
-              },
+                    ],
+                  ),
+                ),
+                const VerticalDivider(width: 1, indent: 4, endIndent: 4, color: Color(0x40FFFFFF)),
+                SizedBox(
+                  width: 150,
+                  child: Container(
+                    color: const Color(0x14141414),
+                    child: StreamBuilder<
+                            Map<String, Map<String, dynamic>>>(
+                        stream: ChatService.instance.presenceStream(),
+                        builder: (context, psnap) {
+                          if (psnap.hasError) {
+                            return const Center(
+                              child: Text('Нет списка\nонлайн',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                      color: Colors.redAccent,
+                                      fontSize: 11)),
+                            );
+                          }
+                          if (!psnap.hasData) {
+                            return const Center(
+                                child: SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2),
+                            ));
+                          }
+                          final players = psnap.data ?? const {};
+                          return StreamBuilder<Map<String, int>>(
+                            stream:
+                                ChatService.instance.adminRanksStream(),
+                            builder: (context, ranksSnap) {
+                              final ranks = ranksSnap.data ?? const {};
+                              final ids = players.keys.toList()
+                                ..sort((a, b) => (players[a]?['name']
+                                            ?.toString() ??
+                                        '')
+                                    .compareTo(players[b]?['name']
+                                            ?.toString() ??
+                                        ''));
+                              return ListView.builder(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 6),
+                                itemCount: ids.length,
+                                itemBuilder: (context, i) {
+                                  final puid = ids[i];
+                                  final p = players[puid] ?? {};
+                                  final pname =
+                                      p['name']?.toString() ?? '???';
+                                  final rank = ranks[puid] ?? 0;
+                                  return GestureDetector(
+                                    onTap: () =>
+                                        _openPlayerMenu(puid, pname),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 2),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(pname,
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                  color:
+                                                      nickColorForRank(
+                                                          rank),
+                                                  fontSize: 11)),
+                                          Text(
+                                              '${(p['level'] as num?)?.toInt() ?? 1} ур.',
+                                              style: const TextStyle(
+                                                  color: Colors.white54,
+                                                  fontSize: 9)),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                          );
+                        }),
+                  ),
+                ),
+              ],
             ),
           ),
           SafeArea(
@@ -186,11 +439,14 @@ class _ChatScreenState extends State<ChatScreen>
                   Expanded(
                     child: TextField(
                       controller: _input,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 13),
                       decoration: InputDecoration(
-                        hintText: 'Сообщение...',
-                        hintStyle:
-                            const TextStyle(color: Colors.white38, fontSize: 13),
+                        hintText: _tab == 'personal'
+                            ? 'Личное сообщение...'
+                            : 'Сообщение...',
+                        hintStyle: const TextStyle(
+                            color: Colors.white38, fontSize: 13),
                         filled: true,
                         fillColor: const Color(0xFF1A1A1A),
                         contentPadding: const EdgeInsets.symmetric(

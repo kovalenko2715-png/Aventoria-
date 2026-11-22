@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
@@ -30,7 +31,16 @@ class LooksScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: PlayerRepository.instance,
       builder: (context, _) {
-    final looks = ResourceService.instance.listLooks();
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: FirebaseFirestore.instance.collection('catalog').snapshots(),
+      builder: (context, snap0) {
+        final catalogLooks = <String>[
+          for (final d in (snap0.data?.docs ?? const []))
+            if (d.id.startsWith('look_'))
+              (d.data()['url']?.toString() ?? ''),
+        ]..removeWhere((e) => !e.startsWith('http'));
+        final localLooks = ResourceService.instance.listLooks();
+        final looks = [...catalogLooks, ...localLooks];
     final current =
         PlayerRepository.instance.data?['look']?.toString() ?? '';
     return ModuleWindow(
@@ -97,6 +107,8 @@ class LooksScreen extends StatelessWidget {
           ],
         ),
       ),
+    );
+    }
     );
     }
   );

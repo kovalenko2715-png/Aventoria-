@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../services/resource_service.dart';
 import '../widgets/game_image.dart';
@@ -9,8 +10,8 @@ import '../widgets/module_window.dart';
 
 Map<String, dynamic> _itemInfo(Map<String, dynamic> instance) {
   final id = instance['id']?.toString() ?? '';
-  final fromDb = itemDb[id] as Map<String, dynamic>?;
-  if (fromDb != null) return fromDb;
+  final fromDb = ItemsCatalog.instance.itemById(id);
+  if (fromDb.isNotEmpty) return fromDb;
   return {
     'name': instance['name']?.toString() ?? id,
     'icon': instance['icon']?.toString() ?? '📤',
@@ -41,6 +42,17 @@ const Map<String, String> _bonusNames = {
   'exp_bonus': 'Бонус опыта',
   'gold_bonus': 'Бонус золота',
 };
+
+Widget _itemIconW(String? icon, double fontSize, {double? box}) {
+  final iconText = (icon == null || icon.isEmpty) ? '📦' : icon;
+  if (iconText.startsWith('http')) {
+    return GameImage(iconText,
+        width: box ?? fontSize * 1.4,
+        height: box ?? fontSize * 1.4,
+        fit: BoxFit.contain);
+  }
+  return Text(iconText, style: TextStyle(fontSize: fontSize));
+}
 
 class InventoryScreen extends StatelessWidget {
   const InventoryScreen({super.key});
@@ -233,8 +245,8 @@ class InventoryScreen extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Text(info['icon']?.toString() ?? '📤',
-                            style: const TextStyle(fontSize: 30)),
+                        _itemIconW(info['icon']?.toString(), 30,
+                            box: 40),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(info['name']?.toString() ?? '',
@@ -245,6 +257,7 @@ class InventoryScreen extends StatelessWidget {
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600)),
                         ),
+                        // (иконка показана отдельно в слоте заголовка)
                         IconButton(
                           visualDensity: VisualDensity.compact,
                           onPressed: () => Navigator.pop(ctx),
@@ -470,8 +483,8 @@ class InventoryScreen extends StatelessWidget {
                       color: Colors.white, fontSize: 11)),
             ),
             Center(
-              child: Text(info['icon']?.toString() ?? '📤',
-                  style: const TextStyle(fontSize: 26)),
+              child: _itemIconW(info['icon']?.toString(), 26,
+                  box: 34),
             ),
             if (qty > 1)
               Positioned(

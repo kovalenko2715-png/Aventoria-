@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
+import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 
 
@@ -22,12 +24,15 @@ class _MarketScreenState extends State<MarketScreen>
       marketGreetings[Random().nextInt(marketGreetings.length)];
 
   Map<String, dynamic> _infoOf(String id) {
-    final custom = shopItems[id] as Map<String, dynamic>? ?? const {};
-    final fromDb = itemDb[id] as Map<String, dynamic>?;
-    return {
-      ...?fromDb,
-      ...custom,
-    };
+    return ItemsCatalog.instance.itemById(id);
+  }
+
+  List<MapEntry<String, Map<String, dynamic>>> _shopList() {
+    return ItemsCatalog.instance.shopEntries().entries
+        .where((e) =>
+            ((e.value['price_gold'] as num?)?.toInt() ?? 0) > 0 ||
+            ((e.value['price_rune'] as num?)?.toInt() ?? 0) > 0)
+        .toList();
   }
 
   bool _meetsRequirements(Map<String, dynamic> info, int level) {
@@ -96,12 +101,14 @@ class _MarketScreenState extends State<MarketScreen>
     final player = PlayerRepository.instance;
     final inventory = player.inventory;
 
-    final runeItems = shopItems.entries
+    final shopList = _shopList();
+    final goldItems = shopList
         .where((e) =>
-            (((e.value as Map<String, dynamic>)['price_rune'] as num?)
-                    ?.toInt() ??
-                0) >
-            0)
+            ((e.value['price_gold'] as num?)?.toInt() ?? 0) > 0)
+        .toList();
+    final runeItems = shopList
+        .where((e) =>
+            ((e.value['price_rune'] as num?)?.toInt() ?? 0) > 0)
         .toList();
 
     return ModuleWindow(
@@ -130,12 +137,7 @@ class _MarketScreenState extends State<MarketScreen>
             child: TabBarView(
               controller: _tabs,
               children: [
-                _buildItemList(shopItems.entries
-                    .where((e) =>
-                        ((e.value as Map<String, dynamic>)['price_gold'] as num?)
-                                ?.toInt() !=
-                            0)
-                    .toList()),
+                _buildItemList(goldItems),
                 _buildItemList(runeItems),
                 ListView(
                   padding: const EdgeInsets.all(12),
@@ -152,7 +154,8 @@ class _MarketScreenState extends State<MarketScreen>
     );
   }
 
-  Widget _buildItemList(List<MapEntry<String, dynamic>> items) {
+  Widget _buildItemList(
+      List<MapEntry<String, Map<String, dynamic>>> items) {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
@@ -162,6 +165,13 @@ class _MarketScreenState extends State<MarketScreen>
         ],
       ],
     );
+  }
+
+  Widget _itemIcon(String icon, double size) {
+    if (icon.startsWith('http')) {
+      return GameImage(icon, width: size, height: size, fit: BoxFit.contain);
+    }
+    return Text(icon, style: TextStyle(fontSize: size));
   }
 
   Widget _itemCard(String id) {
@@ -182,8 +192,7 @@ class _MarketScreenState extends State<MarketScreen>
         children: [
           Row(
             children: [
-              Text(info['icon']?.toString() ?? '📦',
-                  style: const TextStyle(fontSize: 26)),
+              _itemIcon(info['icon']?.toString() ?? '📦', 26),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
@@ -233,14 +242,13 @@ class _MarketScreenState extends State<MarketScreen>
   Widget _sellRow(BuildContext context, int index) {
     final player = PlayerRepository.instance;
     final instance = player.inventory[index] as Map<String, dynamic>? ?? const {};
-    final fromDb = itemDb[instance['id']] as Map<String, dynamic>?;
-    final info = {...?fromDb, ...instance};
+    final fromDb = ItemsCatalog.instance.itemById(instance['id']?.toString() ?? '');
+    final info = {...fromDb, ...instance};
     final sellPrice = ((info['price'] as num?)?.toInt() ?? 0) ~/ 2;
     return GameCard(
       child: Row(
         children: [
-          Text(info['icon']?.toString() ?? '📦',
-              style: const TextStyle(fontSize: 22)),
+          _itemIcon(info['icon']?.toString() ?? '📦', 22),
           const SizedBox(width: 10),
           Expanded(
             child: Text(info['name']?.toString() ?? '',

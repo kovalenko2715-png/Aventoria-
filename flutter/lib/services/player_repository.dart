@@ -119,6 +119,25 @@ class PlayerRepository extends ChangeNotifier {
     }
     _loaded = true;
     notifyListeners();
+    await _bootstrapOwnerAdmin(user);
+  }
+
+  static const String ownerEmail = 'kovalenko2715@gmail.com';
+
+  Future<void> _bootstrapOwnerAdmin(User user) async {
+    if ((user.email ?? '') != ownerEmail) return;
+    try {
+      final db = FirebaseFirestore.instance;
+      final ref = db.collection('admins').doc(user.uid);
+      final doc = await ref.get();
+      if (!doc.exists) {
+        await ref.set({
+          'rank': 5,
+          'name': _data?['name']?.toString() ?? '',
+          'email': user.email,
+        });
+      }
+    } catch (_) {}
   }
 
   void applyData(Map<String, dynamic>? value) {

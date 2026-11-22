@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../services/resource_service.dart';
 
-/// Картинка из скачанных ресурсов игры; если их ещё нет — из бандла.
+/// Картинка из скачанных ресурсов игры; если их ещё нет — из бандла;
+/// ссылки http(s) грузятся из сети (иконки и облики из админ-панели).
 class GameImage extends StatelessWidget {
   final String asset;
   final BoxFit? fit;
@@ -21,12 +22,24 @@ class GameImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final src = asset.trim();
+    if (src.startsWith('http://') || src.startsWith('https://')) {
+      return Image.network(src, fit: fit, width: width, height: height,
+          errorBuilder: (_, __, ___) => SizedBox(
+                width: width,
+                height: height,
+              ));
+    }
     final path = ResourceService.instance.filePath(asset);
     if (path != null) {
       return Image.file(File(path),
           fit: fit, width: width, height: height);
     }
     return Image.asset('assets/$asset',
-        fit: fit, width: width, height: height);
+        fit: fit, width: width, height: height,
+        errorBuilder: (_, __, ___) => SizedBox(
+              width: width,
+              height: height,
+            ));
   }
 }

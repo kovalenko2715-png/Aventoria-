@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../data/game_data.dart';
 import '../main.dart';
+import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../widgets/module_window.dart';
 
@@ -115,8 +115,8 @@ class _AuctionScreenState extends State<AuctionScreen>
     if (price <= 0) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    final fromDb = itemDb[instance['id']] as Map<String, dynamic>?;
-    final info = {...?fromDb, ...instance};
+    final fromDb = ItemsCatalog.instance.itemById(instance['id']?.toString() ?? '');
+    final info = {...fromDb, ...instance};
     await _lots.add({
       'seller_uid': uid,
       'seller': PlayerRepository.instance.name,
@@ -242,8 +242,8 @@ class _AuctionScreenState extends State<AuctionScreen>
   Widget _sellRow(BuildContext context, int index) {
     final player = PlayerRepository.instance;
     final instance = player.inventory[index] as Map<String, dynamic>? ?? const {};
-    final fromDb = itemDb[instance['id']] as Map<String, dynamic>?;
-    final info = {...?fromDb, ...instance};
+    final fromDb = ItemsCatalog.instance.itemById(instance['id']?.toString() ?? '');
+    final info = {...fromDb, ...instance};
     return GameCard(
       child: Row(
         children: [

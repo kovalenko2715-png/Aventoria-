@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../data/game_data.dart';
 import '../main.dart';
+import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../widgets/module_window.dart';
 
@@ -37,19 +37,19 @@ class _StorageScreenState extends State<StorageScreen> {
     final item = _cellOf(storage, index);
     if (item == null) return;
     final id = item['id']?.toString() ?? '';
-    final db = itemDb[id];
+    final db = ItemsCatalog.instance.itemById(id);
     final instance = <String, dynamic>{
       'id': id,
-      'icon': db?['icon'] ?? item['icon'] ?? '📦',
-      'name': db?['name'] ?? item['name'] ?? '???',
-      'level': db?['level'] ?? 1,
-      'type': db?['type'] ?? 'material',
+      'icon': db['icon'] ?? item['icon'] ?? '📦',
+      'name': db['name'] ?? item['name'] ?? '???',
+      'level': db['level'] ?? 1,
+      'type': db['type'] ?? 'material',
       'description':
-          db?['description'] ?? item['description'] ?? 'Нет описания',
-      'durability': db?['durability'] ?? 100,
-      'price': db?['price'] ?? 0,
-      'requirements': db?['requirements'] ?? const {},
-      'bonuses': db?['bonuses'] ?? const {},
+          db['description'] ?? item['description'] ?? 'Нет описания',
+      'durability': db['durability'] ?? 100,
+      'price': db['price'] ?? 0,
+      'requirements': db['requirements'] ?? const {},
+      'bonuses': db['bonuses'] ?? const {},
     };
     await PlayerRepository.instance.addInventoryItem(instance);
     storage[index] = null;

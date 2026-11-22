@@ -5,9 +5,11 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/chat_service.dart';
+import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../widgets/game_image.dart';
 import '../widgets/nickname_dialog.dart';
+import 'admin_screen.dart';
 import 'arena_screen.dart';
 import 'auction_screen.dart';
 import 'bosses_screen.dart';
@@ -37,9 +39,11 @@ class _MainScreenState extends State<MainScreen>
   final PlayerRepository _player = PlayerRepository.instance;
   bool _loading = true;
   bool _burgerOpen = false;
+  int _adminRank = 0;
   String _lastMessage = 'Система: Добро пожаловать в Aventoria!';
   Timer? _clockTimer;
   String _timeString = '';
+  StreamSubscription<int>? _adminSub;
   late final AnimationController _runePulse;
 
   @override
@@ -47,6 +51,10 @@ class _MainScreenState extends State<MainScreen>
     super.initState();
     _initPlayer();
     ChatService.instance.startHeartbeat();
+    ItemsCatalog.instance.start();
+    _adminSub = ChatService.instance.adminRank().listen((r) {
+      if (mounted && r != _adminRank) setState(() => _adminRank = r);
+    });
     _runePulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -60,6 +68,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void dispose() {
     _clockTimer?.cancel();
+    _adminSub?.cancel();
     _runePulse.dispose();
     ChatService.instance.stopHeartbeat();
     super.dispose();
@@ -89,6 +98,36 @@ class _MainScreenState extends State<MainScreen>
     if (_player.isLoaded && _player.nicknameMissing && mounted) {
       await showNicknameDialog(context);
     }
+    if (mounted && await ChatService.instance.hasPendingNickRequest()) {
+      final reason = await ChatService.instance.adminNickRequestMessage();
+      if (mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF151515),
+            title: const Text('Запрос от администрации',
+                style: TextStyle(
+                    color: kGoldColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold)),
+            content: Text(
+                'Администрация просит сменить ник персонажа.${(reason == null || reason.isEmpty) ? '' : '\n\n$reason'}',
+                style: const TextStyle(
+                    color: Colors.white70, fontSize: 12)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Понятно',
+                    style: TextStyle(color: kGoldColor)),
+              ),
+            ],
+          ),
+        );
+        await showNicknameDialog(context);
+        await ChatService.instance.clearNickRequest();
+      }
+    }
     if (mounted) setState(() => _loading = false);
   }
 
@@ -106,7 +145,7 @@ class _MainScreenState extends State<MainScreen>
             type: MaterialType.transparency,
             child: SafeArea(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 92, 14, 62),
+                padding: const EdgeInsets.fromLTRB(14, 78, 14, 62),
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: screen,
@@ -177,6 +216,9 @@ class _MainScreenState extends State<MainScreen>
       case 'Облики':
         push(const LooksScreen());
         return;
+      case 'Админ панель':
+        push(const AdminScreen());
+        return;
     }
     setState(() {
       _lastMessage = 'Система: $title — закрыто';
@@ -215,7 +257,7 @@ class _MainScreenState extends State<MainScreen>
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
-                  top: 84,
+                  top: 72,
                   bottom: 56,
                   child: _contentArea(),
                 ),
@@ -245,7 +287,7 @@ class _MainScreenState extends State<MainScreen>
         : (email.contains('@') ? email.split('@').first : 'Игрок');
     return Container(
       color: const Color(0xB31A1A1A),
-      height: 78,
+      height: 66,
       alignment: Alignment.centerLeft,
       padding: const EdgeInsets.symmetric(horizontal: 10),
       child: SafeArea(
@@ -427,6 +469,7 @@ class _MainScreenState extends State<MainScreen>
       ('Задания', moduleAction('Задания')),
       ('Почта', moduleAction('Почта')),
       ('Настройки', moduleAction('Настройки')),
+      if (_adminRank > 0) ('👑 Админ панель', moduleAction('Админ панель')),
     ];
     return GestureDetector(
       onTap: () => setState(() => _burgerOpen = false),
