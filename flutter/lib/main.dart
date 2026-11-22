@@ -121,15 +121,10 @@ class _AventoriaAppState extends State<AventoriaApp> {
     }
     await Future.delayed(const Duration(milliseconds: 100));
     _setLabel('Ресурсы...');
-    final info = await PackageInfo.fromPlatform();
     await ResourceService.instance.loadLocal();
-    if (!ResourceService.instance.isVersion(info.version)) {
-      if (!mounted) return;
-      setState(() => _stage = _BootStage.resources);
-      await _handleResources(info);
-      return;
-    }
-    await _enterGame();
+    if (!mounted) return;
+    setState(() => _stage = _BootStage.resources);
+    await _handleResources();
   }
 
   Future<void> _enterGame() async {
@@ -146,7 +141,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
     _checkUpdates();
   }
 
-  Future<void> _handleResources(PackageInfo info) async {
+  Future<void> _handleResources() async {
     final ctx = _navKey.currentContext;
     if (ctx == null) {
       await _enterGame();
@@ -192,41 +187,80 @@ class _AventoriaAppState extends State<AventoriaApp> {
         }
       }
     }
-    final yes = await showDialog<bool>(
-      context: ctx,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF151515),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        title: const Text('Файлы игры не загружены',
-            style: TextStyle(color: Colors.white, fontSize: 17)),
-        content: Text(
-          'Клиент скачает файлы игры с GitHub:\nМузыка и графика — $sizeMb МБ.\n\nСкачать сейчас?',
-          style: const TextStyle(color: Colors.white70, fontSize: 13),
+    if (!ResourceService.instance.installed) {
+      final yes = await showDialog<bool>(
+        context: ctx,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          title: const Text('Файлы игры не загружены',
+              style: TextStyle(color: Colors.white, fontSize: 17)),
+          content: Text(
+            'Клиент скачает файлы игры с GitHub:\nМузыка и графика — $sizeMb МБ.\n\nСкачать сейчас?',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Нет, выйти',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Скачать',
+                  style: TextStyle(
+                      color: kGoldColor, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Нет, выйти',
-                style: TextStyle(color: Colors.white54)),
+      );
+      if (yes != true || !mounted) {
+        await SystemNavigator.pop();
+        exit(0);
+      }
+    } else if (!ResourceService.instance.hasRemoteUpdate) {
+      await _enterGame();
+      return;
+    } else {
+      final yes = await showDialog<bool>(
+        context: ctx,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10)),
+          title: const Text('Файлы игры обновились',
+              style: TextStyle(color: Colors.white, fontSize: 17)),
+          content: Text(
+            'На сервере новая версия файлов игры:\n$sizeMb МБ.\n\nОбновить сейчас? Игра сама скачает и распакует.',
+            style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Скачать',
-                style: TextStyle(
-                    color: kGoldColor, fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-    if (yes != true || !mounted) {
-      await SystemNavigator.pop();
-      exit(0);
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Позже',
+                  style: TextStyle(color: Colors.white54)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Обновить',
+                  style: TextStyle(
+                      color: kGoldColor, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      if (yes != true) {
+        await _enterGame();
+        return;
+      }
     }
-    await _downloadResources(info);
+    await _downloadResources();
   }
 
-  Future<void> _downloadResources(PackageInfo info) async {
+  Future<void> _downloadResources() async {
     var received = 0, total = 0, bps = 0;
     StateSetter? dlgSet;
     final ctx = _navKey.currentContext;
@@ -271,7 +305,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
     var ok = false;
     while (!ok) {
       try {
-        await ResourceService.instance.download(info.version, (r, t, b) {
+        await ResourceService.instance.download((r, t, b) {
           received = r;
           total = t;
           bps = b;

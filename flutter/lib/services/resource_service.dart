@@ -17,6 +17,13 @@ class ResourceService {
 
   String? latestUrl;
   int latestSize = 0;
+  String _remoteResVersion = '';
+  String _remoteVerUrl = '';
+
+  bool get installed => _resourceVersion.isNotEmpty;
+  bool get hasRemoteUpdate =>
+      installed && _remoteResVersion.isNotEmpty && _remoteResVersion != _resourceVersion;
+  String get remoteResVersion => _remoteResVersion;
 
   Future<void> loadLocal() async {
     final dir = await getApplicationDocumentsDirectory();
@@ -24,7 +31,7 @@ class ResourceService {
     if (!await _base!.exists()) {
       await _base!.create(recursive: true);
     }
-    final marker = File('${_base!.path}/version.txt');
+    final marker = File('${_base!.path}/resources-version.txt');
     if (await marker.exists()) {
       _resourceVersion = (await marker.readAsString()).trim();
     }
@@ -55,14 +62,23 @@ class ResourceService {
       if (name == 'aventoria-resources.zip') {
         latestUrl = a['browser_download_url'] as String?;
         latestSize = a['size'] as int? ?? 0;
-        return;
+      }
+      if (name == 'resources-version.txt') {
+        _remoteVerUrl = a['browser_download_url'] as String? ?? '';
       }
     }
-    throw Exception('Ресурсы не найдены на GitHub');
+    if (latestUrl == null) throw Exception('Ресурсы не найдены на GitHub');
+    if (_remoteVerUrl.isNotEmpty) {
+      final vc = HttpClient();
+      final vreq = await vc.getUrl(Uri.parse(_remoteVerUrl));
+      final vres = await vreq.close().timeout(const Duration(seconds: 15));
+      _remoteResVersion = (await vres.transform(utf8.decoder).join()).trim();
+      vc.close(force: true);
+    }
   }
 
   Future<void> download(
-      String appVersion, void Function(int received, int total, int bps) onProgress) async {
+      void Function(int received, int total, int bps) onProgress) async {
     if (latestUrl == null) throw Exception('Нет адреса загрузки');
     if (_base == null) throw Exception('Хранилище ресурсов не готово');
     final client = HttpClient();
@@ -104,8 +120,9 @@ class ResourceService {
         await out.writeAsBytes(entry.content as List<int>);
       }
     }
-    await File('${_base!.path}/version.txt').writeAsString(appVersion);
-    _resourceVersion = appVersion;
+    await File('${_base!.path}/resources-version.txt')
+        .writeAsString(_remoteResVersion);
+    _resourceVersion = _remoteResVersion;
     if (await file.exists()) await file.delete();
   }
 }
