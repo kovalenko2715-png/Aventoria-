@@ -119,44 +119,99 @@ class _ChatScreenState extends State<ChatScreen>
 
   void _openPlayerMenu(String uid, String name) {
     final me = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == me) {
-      _openProfile(uid);
-      return;
-    }
-    showModalBottomSheet(
+    final isMe = uid == me;
+    showDialog(
       context: context,
-      backgroundColor: const Color(0xFF1A1A1A),
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(12))),
-      builder: (sheetCtx) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.person_outline, color: kGoldColor),
-              title: Text('Посмотреть профиль: $name',
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                _openProfile(uid);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.mail_outline, color: kChatPersonal),
-              title: Text('Написать: $name',
-                  style: const TextStyle(color: Colors.white, fontSize: 13)),
-              onTap: () {
-                Navigator.pop(sheetCtx);
-                setState(() {
-                  _tabs.animateTo(4);
-                  _tab = 'personal';
-                  _pmTargetUid = uid;
-                  _pmTargetName = name;
-                });
-              },
-            ),
-          ],
+      barrierDismissible: true,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          width: 340,
+          decoration: BoxDecoration(
+            color: const Color(0xFA1A1A1A),
+            border: Border.all(
+                color: kGoldColor.withOpacity(0.8), width: 2),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: 12, right: 4, top: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                          isMe ? 'Твой профиль' : name,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: kGoldColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => Navigator.pop(ctx),
+                      icon: const Icon(Icons.close,
+                          color: Colors.white70, size: 20),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 4),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 6),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _menuBtn('Посмотреть профиль', Icons.person_outline,
+                        kGoldColor, () {
+                      Navigator.pop(ctx);
+                      _openProfile(uid);
+                    }),
+                    if (!isMe) ...[
+                      const SizedBox(height: 6),
+                      _menuBtn('Написать', Icons.mail_outline,
+                          kChatPersonal, () {
+                        Navigator.pop(ctx);
+                        setState(() {
+                          _tabs.animateTo(4);
+                          _tab = 'personal';
+                          _pmTargetUid = uid;
+                          _pmTargetName = name;
+                        });
+                      }),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _menuBtn(String label, IconData icon, Color color,
+      VoidCallback onTap) {
+    return SizedBox(
+      height: 34,
+      child: OutlinedButton.icon(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          backgroundColor: const Color(0xFF2A2A2A),
+          side: BorderSide(color: color.withOpacity(0.6)),
+          alignment: Alignment.centerLeft,
+        ),
+        icon: Icon(icon, color: color, size: 17),
+        label: Text(label,
+            style: const TextStyle(color: Colors.white, fontSize: 13)),
       ),
     );
   }
@@ -186,7 +241,7 @@ class _ChatScreenState extends State<ChatScreen>
     final outgoing = _tab == 'personal' && uid == me;
     final target = outgoing ? (msg['to_name']?.toString() ?? '???') : name;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.only(bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -196,7 +251,9 @@ class _ChatScreenState extends State<ChatScreen>
               child: Text(
                 (kAdminRankNames[rank] ?? 'Админ').toUpperCase(),
                 style: TextStyle(
-                    color: nameColor, fontSize: chatFontSize - 2),
+                    color: nameColor,
+                    fontSize: chatFontSize - 2,
+                    height: 1.0),
               ),
             ),
           GestureDetector(
@@ -204,7 +261,9 @@ class _ChatScreenState extends State<ChatScreen>
             child: RichText(
               text: TextSpan(
                 style: TextStyle(
-                    fontSize: chatFontSize, color: Colors.white),
+                    fontSize: chatFontSize,
+                    color: Colors.white,
+                    height: 1.1),
                 children: [
                   if (outgoing)
                     TextSpan(
@@ -224,7 +283,9 @@ class _ChatScreenState extends State<ChatScreen>
           ),
           Text('уровень ${(msg['level'] as num?)?.toInt() ?? '?'}',
               style: TextStyle(
-                  color: Colors.white54, fontSize: chatFontSize - 2.5)),
+                  color: Colors.white54,
+                  fontSize: chatFontSize - 3,
+                  height: 1.0)),
         ],
       ),
     );
@@ -328,7 +389,8 @@ class _ChatScreenState extends State<ChatScreen>
                                 final ranks = ranksSnap.data ?? const {};
                                 return ListView.builder(
                                   controller: _scroll,
-                                  padding: const EdgeInsets.all(10),
+                                  padding: const EdgeInsets.fromLTRB(
+                                      10, 8, 10, 8),
                                   itemCount: docs.length,
                                   itemBuilder: (context, i) =>
                                       _messageRow(docs[i],
@@ -344,7 +406,7 @@ class _ChatScreenState extends State<ChatScreen>
                 ),
                 const VerticalDivider(width: 1, indent: 4, endIndent: 4, color: Color(0x40FFFFFF)),
                 SizedBox(
-                  width: 150,
+                  width: 128,
                   child: Container(
                     color: const Color(0x14141414),
                     child: StreamBuilder<

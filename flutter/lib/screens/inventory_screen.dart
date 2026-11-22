@@ -437,10 +437,10 @@ class InventoryScreen extends StatelessWidget {
               color: const Color(0x33221D18),
             ),
             child: Center(
-              child: Text(has ? '${info0['icon']}' : '',
-                  style: TextStyle(
-                      fontSize: size * 0.48,
-                      color: Colors.white)),
+              child: has
+                  ? _itemIconW(info0['icon']?.toString(), size * 0.48,
+                      box: size * 0.75)
+                  : const SizedBox.shrink(),
             ),
           ),
         ),
@@ -547,7 +547,8 @@ class InventoryScreen extends StatelessWidget {
                   color: const Color(0x33221D18),
                 ),
                 child: look.isNotEmpty &&
-                        ResourceService.instance.filePath(look) != null
+                        (look.startsWith('http') ||
+                            ResourceService.instance.filePath(look) != null)
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(6),
                         child:
@@ -619,11 +620,14 @@ class InventoryScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(8),
                       color: const Color(0x33221D18),
                     ),
-                    child: Text(
-                        equipment['quick$i'] is Map
-                            ? '${_itemInfo(equipment['quick$i'] as Map<String, dynamic>)['icon']}'
-                            : '',
-                        style: const TextStyle(fontSize: 18)),
+                    child: equipment['quick$i'] is Map
+                        ? _itemIconW(
+                            _itemInfo(equipment['quick$i']
+                                as Map<String, dynamic>)['icon']
+                                ?.toString(),
+                            18,
+                            box: 30)
+                        : const SizedBox.shrink(),
                   ),
                 ),
             ],

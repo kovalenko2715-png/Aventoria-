@@ -108,25 +108,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     return ModuleWindow(
       title: '⚙️ Настройки',
+      maxWidth: 640,
       child: ListView(
         padding: const EdgeInsets.all(14),
         children: [
           GameCard(
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Музыка',
-                      style: TextStyle(color: Colors.white, fontSize: 15)),
-                ),
-                TextButton(
-                    onPressed: _toggleMusic,
-                    child: Text(_musicEnabled ? 'Вкл' : 'Выкл',
-                        style: TextStyle(
-                            color: _musicEnabled
-                                ? const Color(0xFF80FF80)
-                                : const Color(0xFFFF4545),
-                            fontSize: 14))),
-              ],
+            child: InkWell(
+              onTap: _toggleMusic,
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Музыка',
+                        style: TextStyle(color: Colors.white, fontSize: 15)),
+                  ),
+                  Text(_musicEnabled ? 'Вкл' : 'Выкл',
+                      style: TextStyle(
+                          color: _musicEnabled
+                              ? const Color(0xFF80FF80)
+                              : const Color(0xFFFF4545),
+                          fontSize: 14)),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
@@ -227,74 +229,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           GameCard(
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Облики',
-                      style: TextStyle(color: Colors.white, fontSize: 15)),
-                ),
-                TextButton(
-                    onPressed: () => _openLooks(context),
-                    child: const Text('Выбрать',
-                        style: TextStyle(color: kGoldColor, fontSize: 13))),
-              ],
+            child: InkWell(
+              onTap: () => _openLooks(context),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Облики',
+                        style: TextStyle(color: Colors.white, fontSize: 15)),
+                  ),
+                  const Text('Выбрать',
+                      style: TextStyle(color: kGoldColor, fontSize: 13)),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right,
+                      color: kGoldColor, size: 18),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
           GameCard(
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Сменить пароль',
-                      style: TextStyle(color: Colors.white, fontSize: 15)),
-                ),
-                TextButton(
-                    onPressed: _changePassword,
-                    child: const Text('Отправить письмо',
-                        style: TextStyle(color: kGoldColor, fontSize: 13))),
-              ],
+            child: InkWell(
+              onTap: _changePassword,
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Сменить пароль',
+                        style: TextStyle(color: Colors.white, fontSize: 15)),
+                  ),
+                  const Text('Отправить письмо',
+                      style: TextStyle(color: kGoldColor, fontSize: 13)),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right,
+                      color: kGoldColor, size: 18),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
           GameCard(
             borderColor: const Color(0xFFFF4545).withOpacity(0.5),
-            child: Row(
-              children: [
-                const Expanded(
-                  child: Text('Выход из аккаунта',
-                      style: TextStyle(color: Colors.white, fontSize: 15)),
-                ),
-                TextButton(
-                    onPressed: () async {
-                      final ok = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          backgroundColor: const Color(0xFF151515),
-                          content: const Text('Выйти из аккаунта?',
-                              style: TextStyle(
-                                  color: Colors.white, fontSize: 13)),
-                          actions: [
-                            TextButton(
-                                onPressed: () => Navigator.pop(ctx, false),
-                                child: const Text('Отмена',
-                                    style: TextStyle(
-                                        color: Colors.white70))),
-                            TextButton(
-                                onPressed: () => Navigator.pop(ctx, true),
-                                child: const Text('Выйти',
-                                    style: TextStyle(
-                                        color: Color(0xFFFF4545)))),
-                          ],
-                        ),
-                      );
-                      if (ok == true && context.mounted) {
-                        await _logout();
-                      }
-                    },
-                    child: const Text('Выход',
+            child: InkWell(
+              onTap: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: const Color(0xFF151515),
+                    content: const Text('Выйти из аккаунта?',
                         style: TextStyle(
-                            color: Color(0xFFFF4545), fontSize: 13))),
-              ],
+                            color: Colors.white, fontSize: 13)),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Отмена',
+                              style: TextStyle(
+                                  color: Colors.white70))),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Выйти',
+                              style: TextStyle(
+                                  color: Color(0xFFFF4545)))),
+                    ],
+                  ),
+                );
+                if (ok == true && context.mounted) {
+                  await _logout();
+                }
+              },
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text('Выход из аккаунта',
+                        style: TextStyle(color: Colors.white, fontSize: 15)),
+                  ),
+                  const Text('Выход',
+                      style: TextStyle(
+                          color: Color(0xFFFF4545), fontSize: 13)),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.chevron_right,
+                      color: Color(0xFFFF4545), size: 18),
+                ],
+              ),
             ),
           ),
         ],

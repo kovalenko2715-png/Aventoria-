@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/services.dart'
     show
         DeviceOrientation,
@@ -96,7 +97,8 @@ class AventoriaApp extends StatefulWidget {
 
 enum _BootStage { boot, resources, error, app }
 
-class _AventoriaAppState extends State<AventoriaApp> {
+class _AventoriaAppState extends State<AventoriaApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
   _BootStage _stage = _BootStage.boot;
   String _error = '';
@@ -105,10 +107,12 @@ class _AventoriaAppState extends State<AventoriaApp> {
   User? _user;
   Timer? _poll;
   Timer? _bootTimer;
+  bool _checkingUpdate = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _bootTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _stage == _BootStage.boot) {
         setState(() => _bootSeconds++);
@@ -119,9 +123,78 @@ class _AventoriaAppState extends State<AventoriaApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _poll?.cancel();
     _bootTimer?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _checkingUpdate) {
+      _checkUpdateResult();
+    }
+  }
+
+  /// После закрытия установщика проверяем фактическую версию APK:
+  /// если она не изменилась — установка не прошла, и мы об этом скажем.
+  Future<void> _checkUpdateResult() async {
+    final upd = UpdateService.instance;
+    final expected = upd.latestTag;
+    if (!_checkingUpdate || expected.isEmpty) return;
+    try {
+      final info = await PackageInfo.fromPlatform();
+      if (!UpdateService.isNewer(expected, info.version)) {
+        _checkingUpdate = false;
+        await _cleanupStaleUpdateApk();
+        return;
+      }
+    } catch (_) {
+      return;
+    }
+    _checkingUpdate = false;
+    if (!mounted) return;
+    final ctx = _navKey.currentContext;
+    if (ctx == null) return;
+    showDialog<void>(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        title: const Text('Обновление не установилось',
+            style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: const Text(
+          'Телефон сообщил об установке, но версия игры не изменилась.\n\n'
+          'Можно попробовать ещё раз или открыть страницу релиза в браузере и скачать APK там.\n'
+          'Если установка не проходит поверх — сначала удали игру, потом установи.',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx),
+            child: const Text('Позже',
+                style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dCtx);
+              launchUrl(Uri.parse(upd.releaseUrl),
+                  mode: LaunchMode.externalApplication);
+            },
+            child: const Text('Открыть страницу релиза',
+                style: TextStyle(color: kRuneBlue)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dCtx);
+              _downloadUpdate();
+            },
+            child: const Text('Попробовать ещё раз',
+                style: TextStyle(
+                    color: kGoldColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _bootSteps() async {
@@ -559,7 +632,36 @@ class _AventoriaAppState extends State<AventoriaApp> {
         Navigator.of(doneCtx, rootNavigator: true).canPop()) {
       Navigator.of(doneCtx, rootNavigator: true).pop();
     }
-    await upd.install(apkFile);
+    final installError = await upd.install(apkFile);
+    if (installError.isNotEmpty) {
+      final errCtx = _navKey.currentContext;
+      if (errCtx == null || !mounted) return;
+      showDialog<void>(
+        context: errCtx,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          title: const Text('Установщик не открылся',
+              style: TextStyle(color: Colors.redAccent, fontSize: 16)),
+          content: Text('Попробуй скачать APK со страницы релиза в браузере.\n\n$installError',
+              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+          actions: [
+            TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  launchUrl(Uri.parse(upd.releaseUrl),
+                      mode: LaunchMode.externalApplication);
+                },
+                child: const Text('Открыть страницу релиза',
+                    style: TextStyle(color: kGoldColor))),
+          ],
+        ),
+      );
+      return;
+    }
+    _checkingUpdate = true;
+    Timer(const Duration(seconds: 5), () {
+      if (mounted && _checkingUpdate) _checkUpdateResult();
+    });
   }
 
   /// Скачанный ранее APK после установки больше не нужен — подчищаем.

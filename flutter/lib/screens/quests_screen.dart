@@ -6,7 +6,8 @@ import '../services/quest_service.dart';
 import '../widgets/module_window.dart';
 
 class QuestsScreen extends StatefulWidget {
-  const QuestsScreen({super.key});
+  final bool board;
+  const QuestsScreen({super.key, this.board = false});
 
   @override
   State<QuestsScreen> createState() => _QuestsScreenState();
@@ -152,73 +153,82 @@ class _QuestsScreenState extends State<QuestsScreen>
     ];
   }
 
-  List<Widget> _mine() {
-    final active = _active();
-    return [
-      if (active.isEmpty)
-        const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text('Нет активных заданий',
-              style: TextStyle(color: Colors.white54, fontSize: 14)),
-        ),
-      for (final q in active) ...[
-        _questCard(q, accepted: true),
-        const SizedBox(height: 6),
-      ],
-    ];
-  }
+
 
   @override
   Widget build(BuildContext context) {
     final player = PlayerRepository.instance;
+    final board = widget.board;
     return ModuleWindow(
-      title: '📜 Задания',
+      title: board ? '📋 Доска заданий' : '📜 Мои задания',
+      maxWidth: 720,
       child: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  child: Text(
-                      'Очки гильдейских заданий: ${player.data?['guild_quest_points'] ?? 0}',
-                      style: const TextStyle(color: kGoldColor, fontSize: 13)),
-                ),
-                TabBar(
-                  controller: _tabs,
-                  labelColor: kGoldColor,
-                  unselectedLabelColor: Colors.white54,
-                  indicatorColor: kGoldColor,
-                  isScrollable: true,
-                  tabs: const [
-                    Tab(text: 'ЕЖЕДНЕВНЫЕ'),
-                    Tab(text: 'ЕЖЕНЕДЕЛЬНЫЕ'),
+          : !board
+              ? ListView(
+                  padding: const EdgeInsets.all(12),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(
+                          'Очки гильдейских заданий: ${player.data?['guild_quest_points'] ?? 0}',
+                          style: const TextStyle(color: kGoldColor, fontSize: 13)),
+                    ),
+                    if (_active().isEmpty)
+                      const Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Text(
+                            'У вас нет принятых заданий.\nЗадания берутся в Гильдии → Доска заданий',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                                color: Colors.white54, fontSize: 14)),
+                      ),
+                    for (final q in _active()) ...[
+                      _questCard(q, accepted: true),
+                      const SizedBox(height: 6),
+                    ],
+                  ],
+                )
+              : Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 4),
+                      child: Text(
+                          'Очки гильдейских заданий: ${player.data?['guild_quest_points'] ?? 0}',
+                          style: const TextStyle(
+                              color: kGoldColor, fontSize: 13)),
+                    ),
+                    TabBar(
+                      controller: _tabs,
+                      labelColor: kGoldColor,
+                      unselectedLabelColor: Colors.white54,
+                      indicatorColor: kGoldColor,
+                      isScrollable: true,
+                      tabs: const [
+                        Tab(text: 'ЕЖЕДНЕВНЫЕ'),
+                        Tab(text: 'ЕЖЕНЕДЕЛЬНЫЕ'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabs,
+                        children: [
+                          ListView(
+                            padding: const EdgeInsets.all(12),
+                            children:
+                                _offers(QuestState.instance.dailyOffers),
+                          ),
+                          ListView(
+                            padding: const EdgeInsets.all(12),
+                            children:
+                                _offers(QuestState.instance.weeklyOffers),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-                      ListView(
-                        padding: const EdgeInsets.all(12),
-                        children: [
-                          ..._mine(),
-                          const SizedBox(height: 10),
-                          ..._offers(QuestState.instance.dailyOffers),
-                        ],
-                      ),
-                      ListView(
-                        padding: const EdgeInsets.all(12),
-                        children: [
-                          ..._mine(),
-                          const SizedBox(height: 10),
-                          ..._offers(QuestState.instance.weeklyOffers),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
     );
   }
 }

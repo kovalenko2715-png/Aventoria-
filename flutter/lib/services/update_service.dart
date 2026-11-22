@@ -19,9 +19,11 @@ class UpdateService {
 
   String get latestTag => _latestTag ?? '';
 
+  String get releaseUrl => 'https://github.com/$_repo/releases/latest';
+
   int get apkSize => _apkSize;
 
-  static String _normalized(String v) {
+  static String normalized(String v) {
     var s = v.trim();
     if (s.startsWith('v')) s = s.substring(1);
     final plus = s.indexOf('+');
@@ -30,7 +32,7 @@ class UpdateService {
   }
 
   static int _versionValue(String v) {
-    final parts = _normalized(v).split('.');
+    final parts = normalized(v).split('.');
     var value = 0;
     for (var i = 0; i < 3; i++) {
       final p = i < parts.length ? int.tryParse(parts[i]) ?? 0 : 0;
@@ -63,7 +65,7 @@ class UpdateService {
         if (name.endsWith('.apk') && name.contains('release')) {
           _apkUrl = a['browser_download_url'] as String?;
           _apkSize = a['size'] as int? ?? 0;
-          _latestTag = _normalized(tag);
+          _latestTag = normalized(tag);
           return;
         }
       }
@@ -114,8 +116,12 @@ class UpdateService {
     return status.isGranted;
   }
 
-  Future<void> install(File apk) async {
-    await OpenFilex.open(apk.path,
+  /// Открывает системный установщик. Возвращает '' при успехе, иначе текст ошибки.
+  Future<String> install(File apk) async {
+    final res = await OpenFilex.open(apk.path,
         type: 'application/vnd.android.package-archive');
+    return res.type == ResultType.done
+        ? ''
+        : (res.message.isNotEmpty ? res.message : 'Установщик не открылся');
   }
 }

@@ -6,7 +6,7 @@ import '../main.dart';
 import 'game_image.dart';
 
 /// Просмотр профиля другого игрока из чата: статы, пассивки,
-/// уровень, HP/мана и кукла с обликом — как в бойцовском клубе.
+/// уровень, HP/мана, кукла с обликом и надетый шмот — как в бойцовском клубе.
 class PlayerProfileView extends StatelessWidget {
   final String uid;
   const PlayerProfileView({super.key, required this.uid});
@@ -42,6 +42,57 @@ class PlayerProfileView extends StatelessWidget {
 
   Widget _stat(int value, String label) => _kv('$label:', '$value');
 
+  static const _slotOrder = [
+    'wings',
+    'bracelet',
+    'mask',
+    'helmet',
+    'armor',
+    'gloves',
+    'weapon',
+    'pants',
+    'boots',
+    'cloak',
+    'necklace',
+    'earring1',
+    'earring2',
+    'shield',
+    'shirt',
+    'belt',
+    'ring1',
+    'ring2',
+    'bag',
+    'rune',
+  ];
+
+  Widget _eqSlot(Map<String, dynamic> equipment, String key) {
+    final item = equipment[key];
+    final has = item is Map<String, dynamic>;
+    final icon = has ? (item['icon']?.toString() ?? '') : '';
+    return Container(
+      width: 42,
+      height: 46,
+      decoration: BoxDecoration(
+        border: Border.all(
+            color: has
+                ? kGoldColor
+                : kGoldColor.withOpacity(0.4),
+            width: has ? 2 : 1.2),
+        borderRadius: BorderRadius.circular(8),
+        color: const Color(0x33221D18),
+      ),
+      child: Center(
+        child: has && icon.startsWith('http')
+            ? GameImage(icon,
+                width: 30, height: 30, fit: BoxFit.contain)
+            : Text(icon,
+                style: TextStyle(
+                    fontSize: has ? 18 : 10,
+                    color: has ? Colors.white : Colors.white24)),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
@@ -56,6 +107,8 @@ class PlayerProfileView extends StatelessWidget {
         final elements =
             (data['elements'] as Map<String, dynamic>?) ?? const {};
         final look = data['look']?.toString() ?? '';
+        final equipment =
+            (data['equipment'] as Map<String, dynamic>?) ?? const {};
         int s(String k) => (stats[k] as num?)?.toInt() ?? 0;
 
         final hp = _passive(stats, 'max_hp');
@@ -159,6 +212,13 @@ class PlayerProfileView extends StatelessWidget {
                               style: const TextStyle(
                                   color: Colors.white, fontSize: 12))
                       ]),
+                      section('ШМОТ'),
+                      Wrap(
+                          spacing: 5,
+                          runSpacing: 5,
+                          children: [
+                            for (final k in _slotOrder) _eqSlot(equipment, k)
+                          ]),
                       section('ИНФОРМАЦИЯ'),
                       _kv('Ник:',
                           data['name']?.toString() ?? '???'),

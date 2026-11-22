@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../main.dart';
 import '../services/audio_manager.dart';
@@ -17,6 +18,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final _password = TextEditingController();
   final _confirm = TextEditingController();
   double _logoOpacity = 0.0;
+  String _appVersion = '';
 
   bool _isLogin = true;
   bool _busy = false;
@@ -24,6 +26,11 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void initState() {
     super.initState();
+    PackageInfo.fromPlatform()
+        .then((i) {
+          if (mounted) setState(() => _appVersion = i.version);
+        })
+        .catchError((_) {});
     Future.delayed(Duration.zero, () {
       if (mounted) setState(() => _logoOpacity = 1.0);
     });
@@ -167,6 +174,13 @@ class _AuthScreenState extends State<AuthScreen> {
               'assets/logo.png',
               fit: BoxFit.cover,
             ),
+          ),
+          Positioned(
+            left: 10,
+            bottom: 6,
+            child: Text('Aventoria v$_appVersion',
+                style: const TextStyle(
+                    color: Colors.white38, fontSize: 12)),
           ),
           LayoutBuilder(
             builder: (context, c) {

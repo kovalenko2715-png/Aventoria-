@@ -6,12 +6,14 @@ class ModuleWindow extends StatelessWidget {
   final String title;
   final Widget child;
   final List<Widget>? actions;
+  final double? maxWidth;
 
   const ModuleWindow({
     super.key,
     required this.title,
     required this.child,
     this.actions,
+    this.maxWidth,
   });
 
   @override
@@ -23,7 +25,20 @@ class ModuleWindow extends StatelessWidget {
           textScaler: TextScaler.linear(
               MediaQuery.of(context).textScaler.scale(1.0) * 0.85),
         ),
-        child: Container(
+        child: maxWidth == null
+            ? _window(context)
+            : Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxWidth!),
+                  child: _window(context),
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _window(BuildContext context) {
+    return Container(
         decoration: BoxDecoration(
           color: const Color(0xFA141110),
           border: Border.all(color: kGoldColor.withOpacity(0.6), width: 2),
@@ -62,8 +77,6 @@ class ModuleWindow extends StatelessWidget {
             Expanded(child: child),
           ],
         ),
-      ),
-      ),
     );
   }
 }

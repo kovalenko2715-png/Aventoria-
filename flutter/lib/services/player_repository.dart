@@ -83,11 +83,8 @@ class PlayerRepository extends ChangeNotifier {
 
     if (!doc.exists) {
       final email = user.email ?? '';
-      final nick = (user.displayName?.isNotEmpty ?? false)
-          ? user.displayName!
-          : email.split('@').first;
       final fresh = <String, dynamic>{
-        'name': nick.isEmpty ? 'Герой' : nick,
+        'name': '',
         'email': email,
         'gold': 200,
         'rune': 0,
