@@ -135,12 +135,11 @@ class _AventoriaAppState extends State<AventoriaApp> {
           return StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),
             builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(child: CircularProgressIndicator()),
-                );
-              }
-              return snapshot.hasData
+              final user =
+                  snapshot.connectionState == ConnectionState.waiting
+                      ? FirebaseAuth.instance.currentUser
+                      : snapshot.data;
+              return user != null
                   ? const MainScreen()
                   : const AuthScreen();
             },
