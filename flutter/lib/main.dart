@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'screens/auth_screen.dart';
 import 'screens/main_screen.dart';
 import 'services/audio_manager.dart';
+import 'widgets/godot_viewport.dart';
 
 const kGoldColor = Color(0xFFFFD700);
 const kRuneBlue = Color(0xFF80CCFF);
@@ -161,6 +162,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
           foregroundColor: Colors.white,
         ),
       ),
+      builder: (context, child) => GodotViewport(child: child!),
       home: switch (_stage) {
         _BootStage.boot =>
             _BootScreen(label: _bootLabel, seconds: _bootSeconds),

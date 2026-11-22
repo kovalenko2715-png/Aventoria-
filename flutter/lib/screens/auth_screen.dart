@@ -173,10 +173,10 @@ class _AuthScreenState extends State<AuthScreen> {
               return Align(
                 alignment: Alignment.bottomCenter,
                 child: Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.only(bottom: 8),
                   child: Container(
-                    constraints: const BoxConstraints(maxWidth: 380),
-                    padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+                    constraints: const BoxConstraints(maxWidth: 300),
+                    padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                     decoration: BoxDecoration(
                       color: const Color(0xE60C0A08),
                       borderRadius: BorderRadius.circular(12),
@@ -190,12 +190,12 @@ class _AuthScreenState extends State<AuthScreen> {
                       _field(_email, 'Логин (email)',
                         Icons.mail_outline, false,
                         TextInputType.emailAddress),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 7),
                     _field(_password,
                         _isLogin ? 'Пароль' : 'Придумайте пароль',
                         Icons.lock_outline, true, TextInputType.text),
                     if (!_isLogin) ...[
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 7),
                       _field(
                           _confirm,
                           'Повтор пароля',
@@ -203,9 +203,9 @@ class _AuthScreenState extends State<AuthScreen> {
                           true,
                           TextInputType.text),
                     ],
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     SizedBox(
-                      height: 44,
+                      height: 36,
                       child: OutlinedButton(
                         onPressed: _busy ? null : _submitEmail,
                         style: OutlinedButton.styleFrom(
@@ -246,7 +246,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         color: Colors.white24,
                         height: 16),
                     SizedBox(
-                      height: 44,
+                      height: 36,
                       child: OutlinedButton.icon(
                         onPressed: _busy ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
@@ -281,20 +281,21 @@ class _AuthScreenState extends State<AuthScreen> {
       TextEditingController ctl, String hint, IconData icon,
       bool secret, TextInputType type) {
     return SizedBox(
-      height: 44,
+      height: 36,
       child: TextField(
         controller: ctl,
         obscureText: secret,
         keyboardType: type,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: const TextStyle(color: Colors.white, fontSize: 12),
         decoration: InputDecoration(
+          isDense: true,
           hintText: hint,
           hintStyle:
-              const TextStyle(color: Colors.white54, fontSize: 13),
+              const TextStyle(color: Colors.white54, fontSize: 11),
           filled: true,
           fillColor: const Color(0xB3000000),
           contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14, vertical: 0),
+              horizontal: 10, vertical: 0),
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(6)),
           enabledBorder: OutlineInputBorder(
@@ -305,7 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
             borderRadius: BorderRadius.circular(6),
             borderSide: const BorderSide(color: kGoldColor),
           ),
-          prefixIcon: Icon(icon, size: 18, color: Colors.white38),
+          prefixIcon: Icon(icon, size: 15, color: Colors.white38),
         ),
       ),
     );

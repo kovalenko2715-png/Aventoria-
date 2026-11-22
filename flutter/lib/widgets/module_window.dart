@@ -18,7 +18,11 @@ class ModuleWindow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       type: MaterialType.transparency,
-      child: Container(
+      child: MediaQuery(
+        data: MediaQuery.of(context).copyWith(
+          textScaler: const TextScaler.linear(0.85),
+        ),
+        child: Container(
         decoration: BoxDecoration(
           color: const Color(0xFA141110),
           border: Border.all(color: kGoldColor.withOpacity(0.6), width: 2),
@@ -29,7 +33,7 @@ class ModuleWindow extends StatelessWidget {
           children: [
             Padding(
               padding:
-                  const EdgeInsets.only(left: 16, right: 8, top: 6, bottom: 2),
+                  const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 0),
               child: Row(
                 children: [
                   Expanded(
@@ -40,7 +44,7 @@ class ModuleWindow extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: kGoldColor,
-                        fontSize: 20,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -58,6 +62,7 @@ class ModuleWindow extends StatelessWidget {
           ],
         ),
       ),
+      ),
     );
   }
 }
@@ -72,7 +77,7 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
         color: const Color(0xFF221D18),
         borderRadius: BorderRadius.circular(8),
