@@ -56,15 +56,99 @@ Future<void> main() async {
         ),
       );
     };
-    try {
-      await Firebase.initializeApp();
-    } catch (e) {
-      _errorScreen('Firebase.initializeApp: $e', StackTrace.current);
-      return;
-    }
-    AudioManager.instance.startLoginMusic();
     runApp(const AventoriaApp());
   }, _errorScreen);
+}
+
+class AventoriaApp extends StatefulWidget {
+  const AventoriaApp({super.key});
+
+  @override
+  State<AventoriaApp> createState() => _AventoriaAppState();
+}
+
+class _AventoriaAppState extends State<AventoriaApp> {
+  late final Future<void> _boot;
+
+  @override
+  void initState() {
+    super.initState();
+    _boot = Firebase.initializeApp().timeout(const Duration(seconds: 20));
+    _boot.then((_) => AudioManager.instance.startLoginMusic());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Aventoria',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: kDarkBackground,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: kGoldColor,
+          brightness: Brightness.dark,
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: kPanelColor,
+          foregroundColor: Colors.white,
+        ),
+      ),
+      home: FutureBuilder<void>(
+        future: _boot,
+        builder: (context, bootSnap) {
+          if (!bootSnap.connectionState.isDone) {
+            return Scaffold(
+              body: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: Image.asset('assets/logo.png',
+                          fit: BoxFit.contain),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 40),
+                    child: CircularProgressIndicator(),
+                  ),
+                ],
+              ),
+            );
+          }
+          if (bootSnap.hasError) {
+            return Scaffold(
+              body: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      'ОШИБКА FIREBASE:\n\n${bootSnap.error}',
+                      style: const TextStyle(
+                          color: Colors.redAccent, fontSize: 12),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          return StreamBuilder<User?>(
+            stream: FirebaseAuth.instance.authStateChanges(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Scaffold(
+                  body: Center(child: CircularProgressIndicator()),
+                );
+              }
+              return snapshot.hasData
+                  ? const MainScreen()
+                  : const AuthScreen();
+            },
+          );
+        },
+      ),
+    );
+  }
 }
 
 class AventoriaApp extends StatelessWidget {
