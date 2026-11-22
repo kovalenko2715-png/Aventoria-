@@ -23,7 +23,9 @@ class AudioManager {
 
   Future<void> startLoginMusic() async {
     try {
-      await _player.play(AssetSource('audio/evoria.mp3'));
+      await _player
+          .play(AssetSource('audio/evoria.mp3'))
+          .timeout(const Duration(seconds: 5));
     } catch (_) {}
   }
 
@@ -36,7 +38,9 @@ class AudioManager {
 
   Future<void> _playCurrentMenuTrack() async {
     try {
-      await _player.play(AssetSource(_menuTracks[_trackIndex]));
+      await _player
+          .play(AssetSource(_menuTracks[_trackIndex]))
+          .timeout(const Duration(seconds: 5));
       await _player.setReleaseMode(ReleaseMode.loop);
     } catch (_) {
       _playNextMenuTrack();

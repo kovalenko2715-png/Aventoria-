@@ -72,24 +72,33 @@ enum _BootStage { boot, error, app }
 class _AventoriaAppState extends State<AventoriaApp> {
   _BootStage _stage = _BootStage.boot;
   String _error = '';
+  String _bootLabel = 'Firebase...';
+  int _bootSeconds = 0;
   User? _user;
   Timer? _poll;
+  Timer? _bootTimer;
 
   @override
   void initState() {
     super.initState();
+    _bootTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted && _stage == _BootStage.boot) {
+        setState(() => _bootSeconds++);
+      }
+    });
     _bootSteps();
-    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _syncUser());
   }
 
   @override
   void dispose() {
     _poll?.cancel();
+    _bootTimer?.cancel();
     super.dispose();
   }
 
   Future<void> _bootSteps() async {
     try {
+      _setLabel('Firebase...');
       await Firebase.initializeApp().timeout(const Duration(seconds: 20));
     } catch (e) {
       if (mounted) {
@@ -100,12 +109,30 @@ class _AventoriaAppState extends State<AventoriaApp> {
       }
       return;
     }
+    await Future.delayed(const Duration(milliseconds: 100));
+    _setLabel('Запуск...');
     AudioManager.instance.startLoginMusic();
+    if (mounted) {
+      setState(() {
+        _stage = _BootStage.app;
+      });
+    }
+    _poll = Timer.periodic(const Duration(seconds: 1), (_) => _syncUser());
     _syncUser();
+    _bootTimer?.cancel();
+  }
+
+  void _setLabel(String label) {
+    if (mounted) setState(() => _bootLabel = label);
   }
 
   void _syncUser() {
-    final user = FirebaseAuth.instance.currentUser;
+    User? user;
+    try {
+      user = FirebaseAuth.instance.currentUser;
+    } catch (_) {
+      return;
+    }
     if (!mounted) return;
     if (user != _user || _stage != _BootStage.app) {
       setState(() {
@@ -133,7 +160,8 @@ class _AventoriaAppState extends State<AventoriaApp> {
         ),
       ),
       home: switch (_stage) {
-        _BootStage.boot => const _BootScreen(),
+        _BootStage.boot =>
+            _BootScreen(label: _bootLabel, seconds: _bootSeconds),
         _BootStage.error => _BootError(error: _error),
         _BootStage.app => _user != null
             ? const MainScreen()
@@ -144,7 +172,10 @@ class _AventoriaAppState extends State<AventoriaApp> {
 }
 
 class _BootScreen extends StatelessWidget {
-  const _BootScreen();
+  const _BootScreen({required this.label, required this.seconds});
+
+  final String label;
+  final int seconds;
 
   @override
   Widget build(BuildContext context) {
@@ -157,8 +188,8 @@ class _BootScreen extends StatelessWidget {
               child: Image.asset('assets/logo.png', fit: BoxFit.contain),
             ),
           ),
-          const Text('Загрузка...',
-              style: TextStyle(color: Colors.white70, fontSize: 13)),
+          Text('Загрузка: $label ($seconds с)',
+              style: const TextStyle(color: Colors.white70, fontSize: 13)),
           const Padding(
             padding: EdgeInsets.only(bottom: 40),
             child: CircularProgressIndicator(),
