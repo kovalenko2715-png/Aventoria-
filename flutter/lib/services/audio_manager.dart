@@ -7,8 +7,8 @@ class AudioManager {
   static final AudioManager instance = AudioManager._();
 
   static const List<String> _menuTracks = [
-    'audio/menu1.mp3',
     'audio/menu2.mp3',
+    'audio/menu3.mp3',
     'audio/menu.mp3',
   ];
 
