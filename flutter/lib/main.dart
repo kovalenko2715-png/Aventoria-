@@ -31,7 +31,7 @@ TextScaler gameTextScaler() {
           .instance.data?['settings_ui_font']
           ?.toString() ??
       'medium';
-  const scales = {'small': 0.9, 'medium': 1.0, 'large': 1.15};
+  const scales = {'small': 0.85, 'medium': 1.0, 'large': 1.25};
   return TextScaler.linear(scales[v] ?? 1.0);
 }
 
@@ -417,7 +417,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
             ],
           ),
           content: Text(
-            'Доступна новая версия игры.\nВес: $sizeMb МБ.\n\nДальше скачаем с GitHub и установим поверх — ресурсы сохранятся.',
+            'Доступна новая версия игры.\nВес: $sizeMb МБ.\n\nСкачаем с GitHub и установим поверх — ресурсы сохранятся.\n\nЕсли Android напишет «опасно» — жми «Всё равно установить», это норма для игр вне Google Play.',
             style: const TextStyle(color: Colors.white70, fontSize: 13),
           ),
           actions: [

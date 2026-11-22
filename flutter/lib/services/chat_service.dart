@@ -57,6 +57,7 @@ class ChatService {
         (PlayerRepository.instance.data?['chat_last_read'] as num?)
                 ?.toInt() ??
             0;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
     return FirebaseFirestore.instance
         .collection('chat')
         .orderBy('created_at', descending: true)
@@ -65,7 +66,9 @@ class ChatService {
         .map((s) {
       var n = 0;
       for (final d in s.docs) {
-        final ts = (d['created_at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+        final msg = d.data() as Map<String, dynamic>?;
+        if (uid != null && msg?['uid'] == uid) continue;
+        final ts = (msg?['created_at'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
         if (ts > lastRead) n++;
       }
       return n;

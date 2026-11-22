@@ -402,8 +402,8 @@ class _MainScreenState extends State<MainScreen>
           const SizedBox(width: 6),
           StreamBuilder<int>(
             stream: ChatService.instance.onlineCount(),
-            builder: (context, snap) {
-              final online = snap.data ?? 1;
+            builder: (context, snap0) {
+              final online = snap0.data ?? 1;
               return Text('Онлайн $online',
                   style: const TextStyle(
                       color: kGoldColor, fontSize: 13));
