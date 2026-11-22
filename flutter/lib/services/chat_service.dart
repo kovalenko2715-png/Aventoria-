@@ -37,15 +37,18 @@ class ChatService {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     final player = PlayerRepository.instance;
-    await _presence.doc(user.uid).set({
-      'name': player.isLoaded ? player.name : 'Игрок',
-      'last_seen': DateTime.now().millisecondsSinceEpoch,
-    }, SetOptions(merge: true));
+    try {
+      await _presence.doc(user.uid).set({
+        'name': player.isLoaded ? player.name : 'Игрок',
+        'last_seen': DateTime.now().millisecondsSinceEpoch,
+      }, SetOptions(merge: true));
+    } catch (_) {}
   }
 
   Stream<int> onlineCount() => _presence
       .where('last_seen',
           isGreaterThan: DateTime.now().millisecondsSinceEpoch - kOnlineWindowMs)
       .snapshots()
-      .map((s) => s.docs.length);
+      .map((s) => s.docs.length)
+      .handleError((_) => 0);
 }
