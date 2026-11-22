@@ -97,7 +97,7 @@ class _AventoriaAppState extends State<AventoriaApp> {
       home: FutureBuilder<void>(
         future: _boot,
         builder: (context, bootSnap) {
-          if (!bootSnap.connectionState.isDone) {
+          if (bootSnap.connectionState != ConnectionState.done) {
             return Scaffold(
               body: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -151,37 +151,3 @@ class _AventoriaAppState extends State<AventoriaApp> {
   }
 }
 
-class AventoriaApp extends StatelessWidget {
-  const AventoriaApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Aventoria',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: kDarkBackground,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: kGoldColor,
-          brightness: Brightness.dark,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: kPanelColor,
-          foregroundColor: Colors.white,
-        ),
-      ),
-      home: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
-            );
-          }
-          return snapshot.hasData ? const MainScreen() : const AuthScreen();
-        },
-      ),
-    );
-  }
-}
