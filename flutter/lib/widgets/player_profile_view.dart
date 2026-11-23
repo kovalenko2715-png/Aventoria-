@@ -7,9 +7,30 @@ import 'game_image.dart';
 
 /// Просмотр профиля другого игрока из чата: статы, пассивки,
 /// уровень, HP/мана, кукла с обликом и надетый шмот — как в бойцовском клубе.
-class PlayerProfileView extends StatelessWidget {
+class PlayerProfileView extends StatefulWidget {
   final String uid;
   const PlayerProfileView({super.key, required this.uid});
+
+  @override
+  State<PlayerProfileView> createState() => _PlayerProfileViewState();
+}
+
+class _PlayerProfileViewState extends State<PlayerProfileView> {
+  late Future<DocumentSnapshot<Map<String, dynamic>>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = FirebaseFirestore.instance.collection('users').doc(widget.uid).get();
+  }
+
+  @override
+  void didUpdateWidget(PlayerProfileView old) {
+    super.didUpdateWidget(old);
+    if (old.uid != widget.uid) {
+      _future = FirebaseFirestore.instance.collection('users').doc(widget.uid).get();
+    }
+  }
 
   int _passive(Map<String, dynamic> stats, String key) {
     int s(String k) => (stats[k] as num?)?.toInt() ?? 0;
@@ -96,7 +117,7 @@ class PlayerProfileView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<DocumentSnapshot<Map<String, dynamic>>>(
-      future: FirebaseFirestore.instance.collection('users').doc(uid).get(),
+      future: _future,
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());

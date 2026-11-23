@@ -240,8 +240,9 @@ class _ChatScreenState extends State<ChatScreen>
     final nameColor = nickColorForRank(rank);
     final outgoing = _tab == 'personal' && uid == me;
     final target = outgoing ? (msg['to_name']?.toString() ?? '???') : name;
+    final lvl = msg['level'] as num?;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 1),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -252,7 +253,7 @@ class _ChatScreenState extends State<ChatScreen>
                 (kAdminRankNames[rank] ?? 'Админ').toUpperCase(),
                 style: TextStyle(
                     color: nameColor,
-                    fontSize: chatFontSize - 2,
+                    fontSize: chatFontSize - 4,
                     height: 1.0),
               ),
             ),
@@ -263,17 +264,23 @@ class _ChatScreenState extends State<ChatScreen>
                 style: TextStyle(
                     fontSize: chatFontSize,
                     color: Colors.white,
-                    height: 1.1),
+                    height: 1.15),
                 children: [
                   if (outgoing)
                     TextSpan(
                         text: 'ты → $target: ',
                         style: const TextStyle(color: kChatPersonal)),
-                  TextSpan(text: '$name: ',
+                  TextSpan(text: name,
                       style: TextStyle(
                           color: nameColor
-                              .withOpacity(uid == me ? 0.7 : 1.0),
-                          fontWeight: FontWeight.w600)),
+                              .withOpacity(uid == me ? 0.75 : 1.0),
+                          fontSize: chatFontSize + 2,
+                          fontWeight: FontWeight.w700)),
+                  TextSpan(
+                      text: ' [${lvl?.toInt() ?? '?'}]: ',
+                      style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: chatFontSize - 1)),
                   TextSpan(
                       text: text,
                       style: TextStyle(color: _tabColor)),
@@ -281,11 +288,6 @@ class _ChatScreenState extends State<ChatScreen>
               ),
             ),
           ),
-          Text('уровень ${(msg['level'] as num?)?.toInt() ?? '?'}',
-              style: TextStyle(
-                  color: Colors.white54,
-                  fontSize: chatFontSize - 3,
-                  height: 1.0)),
         ],
       ),
     );
@@ -296,7 +298,7 @@ class _ChatScreenState extends State<ChatScreen>
     final fontVal = PlayerRepository
             .instance.data?['settings_chat_font']?.toString() ??
         'medium';
-    const fontSizes = {'small': 10.0, 'medium': 12.0, 'large': 14.0};
+    const fontSizes = {'small': 11.0, 'medium': 13.0, 'large': 15.0};
     final chatFontSize = fontSizes[fontVal] ?? 12.0;
     return ModuleWindow(
       title: '💬 Чат',

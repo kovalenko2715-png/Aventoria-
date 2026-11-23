@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/chat_service.dart';
+import '../services/item_drafts.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../widgets/game_image.dart';
@@ -52,6 +53,7 @@ class _MainScreenState extends State<MainScreen>
     _initPlayer();
     ChatService.instance.startHeartbeat();
     ItemsCatalog.instance.start();
+    ItemDrafts.instance.load();
     _adminSub = ChatService.instance.adminRank().listen((r) {
       if (mounted && r != _adminRank) setState(() => _adminRank = r);
     });
@@ -267,6 +269,29 @@ class _MainScreenState extends State<MainScreen>
                   bottom: 10,
                   child: _bottomNav(),
                 ),
+                Positioned(
+                  right: 10,
+                  bottom: 62,
+                  child: StreamBuilder<int>(
+                    stream: ChatService.instance.onlineCount(),
+                    builder: (context, snap0) {
+                      final online = snap0.data ?? 1;
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0x99000000),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                              color: kGoldColor.withOpacity(0.2)),
+                        ),
+                        child: Text('Онлайн: $online',
+                            style: const TextStyle(
+                                color: Colors.white70, fontSize: 11)),
+                      );
+                    },
+                  ),
+                ),
                 if (_burgerOpen &&
                     FirebaseAuth.instance.currentUser != null)
                   _burgerPanel(w, h),
@@ -442,15 +467,7 @@ class _MainScreenState extends State<MainScreen>
             },
           ),
           const SizedBox(width: 6),
-          StreamBuilder<int>(
-            stream: ChatService.instance.onlineCount(),
-            builder: (context, snap0) {
-              final online = snap0.data ?? 1;
-              return Text('Онлайн $online',
-                  style: const TextStyle(
-                      color: kGoldColor, fontSize: 13));
-            },
-          ),
+          const SizedBox(width: 2),
         ],
       ),
     );

@@ -462,14 +462,14 @@ class InventoryScreen extends StatelessWidget {
           equipped: false,
           index: index),
       child: Container(
-        width: 95,
-        height: 105,
+        width: 64,
+        height: 76,
         decoration: BoxDecoration(
           border: Border.all(color: kGoldColor.withOpacity(0.55)),
           borderRadius: BorderRadius.circular(8),
           color: const Color(0x33221D18),
         ),
-        padding: const EdgeInsets.all(4),
+        padding: const EdgeInsets.all(3),
         child: Stack(
           children: [
             Positioned(
@@ -480,11 +480,11 @@ class InventoryScreen extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: Colors.white, fontSize: 11)),
+                      color: Colors.white, fontSize: 9)),
             ),
             Center(
-              child: _itemIconW(info['icon']?.toString(), 26,
-                  box: 34),
+              child: _itemIconW(info['icon']?.toString(), 22,
+                  box: 30),
             ),
             if (qty > 1)
               Positioned(
