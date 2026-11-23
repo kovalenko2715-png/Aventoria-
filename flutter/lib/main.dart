@@ -606,23 +606,41 @@ class _AventoriaAppState extends State<AventoriaApp>
         }
         final failCtx = _navKey.currentContext;
         if (failCtx != null) {
-          showDialog<void>(
+          final retry = await showDialog<bool>(
             context: failCtx,
             builder: (ctx) => AlertDialog(
               backgroundColor: const Color(0xFF151515),
               title: const Text('Ошибка обновления',
                   style: TextStyle(color: Colors.redAccent, fontSize: 16)),
-              content: Text('$e',
+              content: Text('$e\n\nДальше скачается заново с того места, где оборвалось. Можно повторить позже — при следующем запуске игра снова предложит обновление.',
                   style: const TextStyle(
                       color: Colors.white70, fontSize: 12)),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('OK',
-                        style: TextStyle(color: kGoldColor))),
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Позже',
+                        style: TextStyle(color: Colors.white54))),
+                TextButton(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      launchUrl(Uri.parse(upd.releaseUrl),
+                          mode: LaunchMode.externalApplication);
+                    },
+                    child: const Text('Страница релиза',
+                        style: TextStyle(color: Colors.white70))),
+                TextButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Попробовать ещё раз',
+                        style: TextStyle(
+                            color: kGoldColor,
+                            fontWeight: FontWeight.bold))),
               ],
             ),
           );
+          if (retry == true) {
+            await Future<void>.delayed(const Duration(milliseconds: 400));
+            await _downloadUpdate();
+          }
         }
         return;
       }
