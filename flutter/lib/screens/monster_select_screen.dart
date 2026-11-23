@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/battle_engine.dart';
+import '../widgets/mob_art.dart';
 import 'battle_screen.dart';
 
 class MonsterSelectScreen extends StatelessWidget {
@@ -21,7 +22,7 @@ class MonsterSelectScreen extends StatelessWidget {
           return Card(
             color: kPanelColor,
             child: ListTile(
-              leading: Text(mob.emoji, style: const TextStyle(fontSize: 34)),
+              leading: MobArt(mob.id, mob.emoji, width: 52, height: 52),
               title: Text(
                 mob.name,
                 style: const TextStyle(

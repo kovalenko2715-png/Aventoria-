@@ -7,6 +7,7 @@ import '../main.dart';
 import '../services/battle_engine.dart';
 import '../services/player_repository.dart';
 import '../services/quest_service.dart';
+import '../widgets/mob_art.dart';
 
 class BattleScreen extends StatefulWidget {
   final MobDef mob;
@@ -214,10 +215,22 @@ class _BattleScreenState extends State<BattleScreen> {
       body: Column(
         children: [
           _hpPanels(),
+          SizedBox(height: 170, child: _mobArt()),
           const Divider(height: 1, color: Colors.black26),
           Expanded(child: _logPanel()),
           _choicePanels(),
         ],
+      ),
+    );
+  }
+
+  Widget _mobArt() {
+    return Container(
+      width: double.infinity,
+      color: const Color(0x33000000),
+      child: Center(
+        child: MobArt(widget.mob.id, widget.mob.emoji,
+            width: 220, height: 200),
       ),
     );
   }
