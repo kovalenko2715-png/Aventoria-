@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/combat_service.dart';
 import 'game_image.dart';
 
 /// Просмотр профиля другого игрока из чата: статы, пассивки,
@@ -32,21 +33,6 @@ class _PlayerProfileViewState extends State<PlayerProfileView> {
     }
   }
 
-  int _passive(Map<String, dynamic> stats, String key) {
-    int s(String k) => (stats[k] as num?)?.toInt() ?? 0;
-    return switch (key) {
-      'attack' => 100 + s('strength') * 2,
-      'defense' => 50 + s('endurance'),
-      'max_hp' => 200 + s('endurance') * 5,
-      'max_mana' => 100 + s('wisdom') * 3,
-      'crit_chance' => (5 + s('agility') * 0.5).toInt(),
-      'crit_damage' => 150 + s('intuition'),
-      'evasion' => (5 + s('agility') * 0.5).toInt(),
-      'magic_find' => (5 + s('intuition') * 0.3).toInt(),
-      _ => 0,
-    };
-  }
-
   Widget _kv(String label, String value, {Color? valueColor}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 2),
         child: Row(
@@ -71,6 +57,7 @@ class _PlayerProfileViewState extends State<PlayerProfileView> {
     'armor',
     'gloves',
     'weapon',
+    'weapon2',
     'pants',
     'boots',
     'cloak',
@@ -132,8 +119,10 @@ class _PlayerProfileViewState extends State<PlayerProfileView> {
             (data['equipment'] as Map<String, dynamic>?) ?? const {};
         int s(String k) => (stats[k] as num?)?.toInt() ?? 0;
 
-        final hp = _passive(stats, 'max_hp');
-        final mana = _passive(stats, 'max_mana');
+        final combat =
+            CombatService.compute(stats: stats, equipment: equipment);
+        final hp = combat.maxHp;
+        final mana = combat.maxMana;
         const elementNames = {
           'fire': '🔥 Огонь',
           'water': '💧 Вода',
@@ -205,24 +194,27 @@ class _PlayerProfileViewState extends State<PlayerProfileView> {
                             s(k), playerStatNames[k] ?? k),
                       section('ПАССИВНЫЕ'),
                       Wrap(spacing: 16, runSpacing: 0, children: [
-                        _stat(_passive(stats, 'attack'), '⚔️ Атака'),
-                        _stat(_passive(stats, 'defense'), '🛡️ Защита'),
+                        _stat(combat.attack, '⚔️ Атака'),
+                        _stat(combat.defense, '🛡️ Защита'),
+                        if (combat.dualWield)
+                          _stat((combat.attack * 1.2).toInt(),
+                              '\u270c\ufe0f \u0410\u0442\u0430\u043a\u0430 \u04451.2'),
                         _stat(
-                            _passive(stats, 'max_hp'), '❤️ HP'),
+                            combat.maxHp, '❤️ HP'),
                         _stat(
-                            _passive(stats, 'max_mana'),
+                            combat.maxMana,
                             '🧪 Мана'),
                         _stat(
-                            _passive(stats, 'crit_chance'),
+                            combat.critChance,
                             '🎯 Крит %'),
                         _stat(
-                            _passive(stats, 'crit_damage'),
+                            combat.critDamage,
                             '💥 Крит. урон %'),
                         _stat(
-                            _passive(stats, 'evasion'),
+                            combat.evasion,
                             '🌀 Уклонение'),
                         _stat(
-                            _passive(stats, 'magic_find'),
+                            combat.magicFind,
                             '🔮 Маг. фаинд'),
                       ]),
                       section('СТИХИИ'),

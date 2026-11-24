@@ -20,6 +20,7 @@ const Map<String, String> _slotChoices = {
   'armor': 'armor',
   'gloves': 'gloves',
   'weapon': 'weapon',
+  'weapon2': 'weapon2',
   'pants': 'pants',
   'boots': 'boots',
   'cloak': 'cloak',
@@ -134,6 +135,7 @@ class AdminScreen extends StatelessWidget {
             .join(','));
     final cSlot = ValueNotifier<String>(
         existing?['slot']?.toString() ?? 'weapon');
+    final cTwoHanded = ValueNotifier<bool>(existing?['two_handed'] == true);
     final cType = ValueNotifier<String>(
         existing?['type']?.toString() ?? 'equipment');
     final cShop = ValueNotifier<bool>(false);
@@ -216,7 +218,9 @@ class AdminScreen extends StatelessWidget {
                       );
                     }),
                 const SizedBox(height: 6),
-                _field(cReqs,
+                                const SizedBox(height: 2),
+                _buildTwoHandedCheck(cType, cSlot, cTwoHanded),
+_field(cReqs,
                     'Требования (напр. strength:5,agility:3)'),
                 const SizedBox(height: 6),
                 _field(cBonus, 'Бонусы (напр. attack:12,crit_chance:2)'),
@@ -275,6 +279,7 @@ class AdminScreen extends StatelessWidget {
                 };
                 if (cType.value == 'equipment') {
                   fields['slot'] = cSlot.value;
+                  fields['two_handed'] = cTwoHanded.value;
                 }
                 if (cType.value == 'consumable') {
                   fields['durability'] = -1;
@@ -349,6 +354,32 @@ class AdminScreen extends StatelessWidget {
     );
   }
 
+
+  /// Чекбокс «Двуручное оружие» — виден только для слота weapon.
+  Widget _buildTwoHandedCheck(ValueNotifier<String> cType,
+      ValueNotifier<String> cSlot, ValueNotifier<bool> cTwoHanded) {
+    return ValueListenableBuilder<String>(
+        valueListenable: cType,
+        builder: (context, tv, _) => tv != 'equipment'
+            ? const SizedBox.shrink()
+            : ValueListenableBuilder<String>(
+                valueListenable: cSlot,
+                builder: (context, sv, _) {
+                  if (sv != 'weapon') return const SizedBox.shrink();
+                  return ValueListenableBuilder<bool>(
+                    valueListenable: cTwoHanded,
+                    builder: (context, v, _) => CheckboxListTile(
+                      dense: true,
+                      title: const Text('✌️ Двуручное оружие (обе руки)',
+                          style: TextStyle(color: Colors.white, fontSize: 13)),
+                      value: v,
+                      activeColor: kGoldColor,
+                      onChanged: (x) => cTwoHanded.value = x ?? false,
+                    ),
+                  );
+                }));
+  }
+
   /// Форма черновика: как форма предмета, но сохраняет в локальную пачку
   /// и позволяет выбрать картинку с телефона.
   Future<void> _showDraftForm(BuildContext context) async {
@@ -365,6 +396,7 @@ class AdminScreen extends StatelessWidget {
     final cShop = ValueNotifier<bool>(false);
     final cPriceGold = TextEditingController(text: '0');
     final cPriceRune = TextEditingController(text: '0');
+    final cTwoHanded = ValueNotifier<bool>(false);
     final imagePath = ValueNotifier<String?>(null);
     int imageBytes = 0;
 
@@ -442,7 +474,9 @@ class AdminScreen extends StatelessWidget {
                                 )),
                       );
                     }),
-                const SizedBox(height: 6),
+                const SizedBox(height: 2),
+                _buildTwoHandedCheck(cType, cSlot, cTwoHanded),
+                const SizedBox(height: 2),
                 ValueListenableBuilder<String?>(
                     valueListenable: imagePath,
                     builder: (context, path, _) {
@@ -544,6 +578,7 @@ class AdminScreen extends StatelessWidget {
                   imagePath: imgPath,
                   type: cType.value,
                   slot: cType.value == 'equipment' ? cSlot.value : null,
+                  twoHanded: cTwoHanded.value,
                   level: int.tryParse(cLevel.text.trim()) ?? 1,
                   price: int.tryParse(cPrice.text.trim()) ?? 0,
                   description: cDesc.text.trim(),
@@ -666,6 +701,7 @@ class AdminScreen extends StatelessWidget {
       'bonuses': d.bonuses,
       if (d.type == 'consumable') 'durability': -1 else 'durability': 100,
       if (d.slot != null) 'slot': d.slot,
+      if (d.type == 'equipment' && d.twoHanded) 'two_handed': true,
     }, shop: d.shop, shopFields: {
       'name': d.name.isEmpty ? d.id : d.name,
       'icon': iconValue,

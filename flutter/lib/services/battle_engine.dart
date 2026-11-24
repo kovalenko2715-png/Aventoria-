@@ -129,14 +129,17 @@ class MobDatabase {
   static MobDef byId(String id) => mobs.firstWhere((m) => m.id == id);
 }
 
+/// Боец: снапшот боевых характеристик на момент боя.
+/// Атака/защита/крит/уклонение уже включают шмот (считает CombatService).
 class Fighter {
   final String name;
   final int level;
   final int attack;
   final int defense;
-  final int agility;
-  final int intuition;
   final int maxHp;
+  final int critChance; // %
+  final int critDamage; // %
+  final int evasion; // %
   int hp;
 
   Fighter({
@@ -144,14 +147,16 @@ class Fighter {
     required this.level,
     required this.attack,
     required this.defense,
-    required this.agility,
-    required this.intuition,
     required this.maxHp,
+    this.critChance = 5,
+    this.critDamage = 150,
+    this.evasion = 5,
   }) : hp = maxHp;
 
   bool get isAlive => hp > 0;
 }
 
+/// Зоны тела и их множители урона — как в БК.
 const Map<String, double> attackParts = {
   'head': 1.15,
   'chest': 1.0,
@@ -168,23 +173,19 @@ const Map<String, String> attackPartNames = {
   'legs': 'НОГИ',
 };
 
-const Map<String, List<String>> blockPairs = {
-  'head_chest': ['head', 'chest'],
-  'chest_belly': ['chest', 'belly'],
-  'belly_groin': ['belly', 'groin'],
-  'groin_legs': ['groin', 'legs'],
-  'legs_head': ['legs', 'head'],
+/// Снаряжение мобов — визуальная кукла врага справа (как в БК шмотки врага).
+const Map<String, Map<String, String>> mobGear = {
+  'rat': {'helmet': '🥜', 'armor': '🧵', 'weapon': '🪡', 'boots': '🥾'},
+  'wolf': {'helmet': '🌫️', 'armor': '🧥', 'weapon': '🦷', 'boots': '🐾'},
+  'skeleton': {'helmet': '💀', 'armor': '🦴', 'weapon': '🗡️', 'shield': '🛡️'},
+  'troll': {'helmet': '🪨', 'armor': '🧱', 'weapon': '🪓', 'necklace': '🦴'},
+  'orc': {'helmet': '🪖', 'armor': '🛡️', 'weapon': '⚔️', 'belt': '🪢'},
+  'dragon': {'helmet': '🐉', 'armor': '🔥', 'weapon': '🌋', 'necklace': '💎', 'wings': '🦇'},
+  'demon': {'helmet': '😈', 'armor': '🕸️', 'weapon': '🔱', 'necklace': '🔮', 'wings': '🦇'},
+  'boss': {'helmet': '👑', 'armor': '🛡️', 'weapon': '⚔️', 'ring1': '💍', 'cloak': '🌑'},
 };
 
-const Map<String, String> blockPairNames = {
-  'head_chest': 'ГОЛОВА+ГРУДЬ',
-  'chest_belly': 'ГРУДЬ+ЖИВОТ',
-  'belly_groin': 'ЖИВОТ+ПОЯС',
-  'groin_legs': 'ПОЯС+НОГИ',
-  'legs_head': 'НОГИ+ГОЛОВА',
-};
-
-enum BattleLogKind { info, damage, block, dodge, result }
+enum BattleLogKind { info, damage, block, dodge, crit, result }
 
 class BattleLogEntry {
   final String text;
@@ -192,59 +193,73 @@ class BattleLogEntry {
   const BattleLogEntry(this.text, this.kind);
 }
 
+/// БК-бой: атака — 1 зона (или 2 при двух оружиях), защита — ровно 2 зоны.
+/// Крит пробивает блок. Заблокированный удар — 25% урона.
 class BattleEngine extends ChangeNotifier {
   final Fighter player;
   final MobDef mob;
   late final Fighter _enemy;
   final Random _rng;
+  final bool dualWield;
 
   final List<BattleLogEntry> _log = [];
 
-  String? selectedAttack;
-  String? selectedBlock;
+  /// Выбор игрока на текущий раунд.
+  String? selectedAttack; // зона для оружия 1
+  String? selectedAttack2; // зона для оружия 2 (только при dualWield)
+  final Set<String> selectedDefense = {}; // ровно 2 зоны
+
+  String? _mobAttack;
+  final Set<String> _mobDefense = {};
+
   bool _finished = false;
   bool _victory = false;
+  int round = 0;
 
   BattleEngine({
     required this.player,
     required this.mob,
     Random? rng,
-  })  : _rng = rng ?? Random() {
+    this.dualWield = false,
+  }) : _rng = rng ?? Random() {
     _enemy = Fighter(
       name: mob.name,
       level: mob.level,
       attack: mob.attack,
       defense: mob.defense,
-      agility: mob.agility,
-      intuition: 0,
       maxHp: mob.hp,
+      critChance: (5 + mob.agility * 0.5).toInt(),
+      critDamage: 150,
+      evasion: (5 + mob.agility * 0.5).toInt().clamp(0, 30),
     );
     _log.add(BattleLogEntry(
         '⚔️ Бой против ${mob.name} (ур. ${mob.level}) начался!',
         BattleLogKind.info));
     _log.add(const BattleLogEntry(
-        'Выберите зону атаки и пару защиты', BattleLogKind.info));
+        'Атака — 1 зона, защита — 2 зоны. Крит пробивает блок.',
+        BattleLogKind.info));
   }
 
   List<BattleLogEntry> get log => List.unmodifiable(_log);
   bool get finished => _finished;
   bool get victory => _victory;
   Fighter get enemy => _enemy;
+  String? get lastMobAttack => _mobAttack;
+  Set<String> get mobDefense => Set.unmodifiable(_mobDefense);
 
   int get expReward => mob.expMin + _rng.nextInt(mob.expMax - mob.expMin + 1);
   int get goldReward => mob.goldMin + _rng.nextInt(mob.goldMax - mob.goldMin + 1);
 
-  double dodgeChance(int agility) => min(0.30, 0.03 + agility * 0.004);
-  double critChance(int intuition) => min(0.40, 0.05 + intuition * 0.005);
-
-  int rollDamage(Fighter attacker, Fighter defender, String part) {
+  int rollDamage(Fighter attacker, Fighter defender, String part,
+      {double power = 1.0, bool crit = false}) {
     var dmg = (attacker.attack - defender.defense / 2) * attackParts[part]!;
-    if (_rng.nextDouble() < critChance(attacker.intuition)) dmg *= 1.75;
-    dmg *= 0.85 + _rng.nextDouble() * 0.30;
+    dmg *= power;
+    if (crit) dmg *= attacker.critDamage / 100;
+    dmg *= 0.85 + _rng.nextDouble() * 0.25;
     return max(1, dmg.round());
   }
 
-  String enemyAttackChoice() {
+  String _enemyAttackChoice() {
     const parts = ['head', 'chest', 'belly', 'groin', 'legs'];
     const weights = [0.30, 0.25, 0.20, 0.15, 0.10];
     final r = _rng.nextDouble();
@@ -256,8 +271,19 @@ class BattleEngine extends ChangeNotifier {
     return 'chest';
   }
 
-  String enemyBlockChoice() =>
-      blockPairs.keys.elementAt(_rng.nextInt(blockPairs.length));
+  Set<String> _enemyDefenseChoice() {
+    const all = ['head', 'chest', 'belly', 'groin', 'legs'];
+    // Опытный противник (чем выше уровень — тем чаще) прикрывает самые
+    // вероятные зоны атаки — голову и грудь.
+    final smartChance = (0.40 + mob.level * 0.012).clamp(0.40, 0.75);
+    if (_rng.nextDouble() < smartChance) {
+      final zones = {'head', 'chest'}.toList()..shuffle(_rng);
+      final outer = all.where((p) => !zones.contains(p)).toList()..shuffle(_rng);
+      return {zones.first, outer.first};
+    }
+    final picked = all.toList()..shuffle(_rng);
+    return {picked[0], picked[1]};
+  }
 
   void selectAttack(String part) {
     if (_finished) return;
@@ -265,57 +291,120 @@ class BattleEngine extends ChangeNotifier {
     notifyListeners();
   }
 
-  void selectBlock(String pair) {
+  void selectAttack2(String part) {
+    if (_finished || !dualWield) return;
+    selectedAttack2 = part;
+    notifyListeners();
+  }
+
+  void toggleDefense(String zone) {
     if (_finished) return;
-    selectedBlock = pair;
+    if (selectedDefense.contains(zone)) {
+      selectedDefense.remove(zone);
+    } else if (selectedDefense.length < 2) {
+      selectedDefense.add(zone);
+    }
     notifyListeners();
   }
 
   bool get readyToStrike =>
-      !_finished && selectedAttack != null && selectedBlock != null;
+      !_finished &&
+      selectedAttack != null &&
+      selectedDefense.length == 2 &&
+      (!dualWield || selectedAttack2 != null);
+
+  /// Один удар одного бойца. Возвращает запись в лог.
+  void _performStrike({
+    required Fighter attacker,
+    required Fighter defender,
+    required String part,
+    required String attackerTitle,
+    required String victimTitle,
+    Set<String>? blockZones,
+    double power = 1.0,
+    String weaponNote = '',
+  }) {
+    if (!attacker.isAlive || !defender.isAlive) return;
+
+    if (_rng.nextDouble() * 100 < defender.evasion) {
+      _log.add(BattleLogEntry(
+          '💨 $victimTitle увернулся$weaponNote от удара в ${attackPartNames[part]!.toLowerCase()}!',
+          BattleLogKind.dodge));
+      return;
+    }
+
+    final crit = _rng.nextDouble() * 100 < attacker.critChance;
+    var dmg = rollDamage(attacker, defender, part, power: power, crit: crit);
+    final blocked =
+        !crit && blockZones != null && blockZones.contains(part);
+
+    if (blocked) {
+      dmg = max(1, (dmg * 0.25).round());
+      _log.add(BattleLogEntry(
+          '🛡️ $victimTitle заблокировал$weaponNote ${attackPartNames[part]!.toLowerCase()}: $attackerTitle −$dmg HP',
+          BattleLogKind.block));
+    } else if (crit) {
+      _log.add(BattleLogEntry(
+          '💥 КРИТ! $attackerTitle пробивает$weaponNote ${attackPartNames[part]!.toLowerCase()} $victimTitle: −$dmg HP',
+          BattleLogKind.crit));
+    } else {
+      _log.add(BattleLogEntry(
+          '🔥 $attackerTitle бьёт$weaponNote в ${attackPartNames[part]!.toLowerCase()} $victimTitle: −$dmg HP',
+          BattleLogKind.damage));
+    }
+    defender.hp = max(0, defender.hp - dmg);
+  }
 
   void strike() {
     if (!readyToStrike) return;
-    final attackPart = selectedAttack!;
-    final playerBlock = selectedBlock!;
+    round++;
+    _log.add(BattleLogEntry('──── Раунд $round ────', BattleLogKind.info));
 
-    _log.add(const BattleLogEntry('━━━━━━━━━━━━━━━━━━━━', BattleLogKind.info));
+    // Моб выбирает свои зоны на этот раунд.
+    _mobAttack = _enemyAttackChoice();
+    _mobDefense
+      ..clear()
+      ..addAll(_enemyDefenseChoice());
 
-    if (_rng.nextDouble() < dodgeChance(mob.agility)) {
-      _log.add(BattleLogEntry(
-          '💨 ${mob.name} уклонился от вашего удара!', BattleLogKind.dodge));
-    } else {
-      final dmg = rollDamage(player, _enemy, attackPart);
-      _enemy.hp = max(0, _enemy.hp - dmg);
-      _log.add(BattleLogEntry(
-          '💥 Вы ударили ${mob.name} в ${attackPartNames[attackPart]!.toLowerCase()}: -$dmg HP',
-          BattleLogKind.damage));
+    // Первый (или единственный) удар игрока.
+    _performStrike(
+      attacker: player,
+      defender: _enemy,
+      part: selectedAttack!,
+      attackerTitle: 'Вы',
+      victimTitle: mob.name,
+      blockZones: _mobDefense,
+    );
+
+    // Второе оружие: два страйка за раунд, вторая рука слабее.
+    if (!_finished && dualWield && _enemy.isAlive) {
+      _performStrike(
+        attacker: player,
+        defender: _enemy,
+        part: selectedAttack2 ?? selectedAttack!,
+        attackerTitle: 'Вы',
+        victimTitle: mob.name,
+        blockZones: _mobDefense,
+        power: 0.65,
+        weaponNote: ' вторым оружием',
+      );
     }
 
-    if (_enemy.isAlive) {
-      final enemyPart = enemyAttackChoice();
-      if (_rng.nextDouble() < dodgeChance(player.agility)) {
-        _log.add(BattleLogEntry(
-            '💨 Вы уклонились от атаки ${mob.name}!', BattleLogKind.dodge));
-      } else {
-        final blocked = blockPairs[playerBlock]!.contains(enemyPart);
-        var dmg = rollDamage(_enemy, player, enemyPart);
-        if (blocked) {
-          dmg = max(1, (dmg * 0.25).round());
-          _log.add(BattleLogEntry(
-              '🛡️ Вы заблокировали удар в ${attackPartNames[enemyPart]!.toLowerCase()} (${blockPairNames[playerBlock]}): -$dmg HP',
-              BattleLogKind.block));
-        } else {
-          _log.add(BattleLogEntry(
-              '🔥 ${mob.name} попал в ${attackPartNames[enemyPart]!.toLowerCase()}: -$dmg HP',
-              BattleLogKind.damage));
-        }
-        player.hp = max(0, player.hp - dmg);
-      }
+    // Ответ моба.
+    if (_enemy.isAlive && player.isAlive) {
+      _performStrike(
+        attacker: _enemy,
+        defender: player,
+        part: _mobAttack!,
+        attackerTitle: mob.name,
+        victimTitle: 'Вы',
+        blockZones: selectedDefense,
+      );
     }
 
     selectedAttack = null;
-    selectedBlock = null;
+    selectedAttack2 = null;
+    selectedDefense.clear();
 
     if (!player.isAlive) {
       _finished = true;
@@ -325,7 +414,8 @@ class BattleEngine extends ChangeNotifier {
       _finished = true;
       _victory = true;
       _log.add(BattleLogEntry(
-          '🏆 ПОБЕДА! ${mob.name} побеждён', BattleLogKind.result));
+          '🏆 ПОБЕДА! ${mob.name} побеждён за $round раундов',
+          BattleLogKind.result));
     }
 
     notifyListeners();

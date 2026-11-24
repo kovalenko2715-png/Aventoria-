@@ -7,18 +7,56 @@ Fighter _player() => Fighter(
       level: 5,
       attack: 200,
       defense: 60,
-      agility: 10,
-      intuition: 20,
       maxHp: 200,
+      critChance: 10,
+      critDamage: 150,
+      evasion: 10,
     );
 
 void main() {
-  test('block pairs cover every attack zone', () {
-    final covered = <String>{};
-    for (final parts in blockPairs.values) {
-      covered.addAll(parts);
-    }
-    expect(covered, equals(attackParts.keys.toSet()));
+  test('defense takes exactly 2 distinct zones', () {
+    final engine = BattleEngine(
+      player: _player(),
+      mob: MobDatabase.byId('rat'),
+      rng: Random(1),
+    );
+    engine.toggleDefense('head');
+    engine.toggleDefense('legs');
+    expect(engine.selectedDefense, {'head', 'legs'});
+    // третья зона не берётся
+    engine.toggleDefense('chest');
+    expect(engine.selectedDefense.length, 2);
+    // повторный тап снимает выбор
+    engine.toggleDefense('head');
+    expect(engine.selectedDefense, {'legs'});
+  });
+
+  test('ready requires attack + 2 defense zones', () {
+    final engine = BattleEngine(
+      player: _player(),
+      mob: MobDatabase.byId('rat'),
+      rng: Random(1),
+    );
+    engine.selectAttack('head');
+    expect(engine.readyToStrike, isFalse);
+    engine.toggleDefense('head');
+    engine.toggleDefense('chest');
+    expect(engine.readyToStrike, isTrue);
+  });
+
+  test('dual wield demands a zone for the second weapon', () {
+    final engine = BattleEngine(
+      player: _player(),
+      mob: MobDatabase.byId('rat'),
+      rng: Random(1),
+      dualWield: true,
+    );
+    engine.selectAttack('head');
+    engine.toggleDefense('head');
+    engine.toggleDefense('chest');
+    expect(engine.readyToStrike, isFalse);
+    engine.selectAttack2('legs');
+    expect(engine.readyToStrike, isTrue);
   });
 
   test('damage is always positive', () {
@@ -49,7 +87,8 @@ void main() {
     while (!engine.finished && strikes < 200) {
       engine
         ..selectAttack(attackParts.keys.elementAt(strikes % 5))
-        ..selectBlock(blockPairs.keys.elementAt(strikes % 5))
+        ..toggleDefense('head')
+        ..toggleDefense('chest')
         ..strike();
       strikes++;
     }
@@ -73,9 +112,11 @@ void main() {
     );
     engine
       ..selectAttack('head')
-      ..selectBlock('head_chest')
+      ..toggleDefense('head')
+      ..toggleDefense('chest')
       ..strike();
     expect(engine.selectedAttack, isNull);
-    expect(engine.selectedBlock, isNull);
+    expect(engine.selectedDefense, isEmpty);
+    expect(engine.round, 1);
   });
 }

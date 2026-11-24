@@ -5,8 +5,11 @@ import 'package:flutter/material.dart';
 import '../data/game_data.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
+import '../services/combat_service.dart';
 import '../services/player_repository.dart';
 import '../services/quest_service.dart';
+import '../services/resource_service.dart';
+import '../widgets/game_image.dart';
 import '../widgets/mob_art.dart';
 
 class BattleScreen extends StatefulWidget {
@@ -22,10 +25,16 @@ class _BattleScreenState extends State<BattleScreen> {
   late BattleEngine _engine;
   bool _rewardsGranted = false;
 
+  // Итоговые статы игрока со шмотом — показываем на панели куклы.
+  late final CombatStats _combat;
+
   @override
   void initState() {
     super.initState();
-    _engine = BattleEngine(player: _makePlayerFighter(), mob: widget.mob);
+    _combat = _computeCombat();
+    _engine = BattleEngine(
+        player: _makePlayerFighter(_combat), mob: widget.mob,
+        dualWield: _combat.dualWield);
     _engine.addListener(_onEngineChanged);
   }
 
@@ -35,19 +44,26 @@ class _BattleScreenState extends State<BattleScreen> {
     super.dispose();
   }
 
-  Fighter _makePlayerFighter() {
+  CombatStats _computeCombat() {
     final player = PlayerRepository.instance;
     final stats = player.data?['stats'] as Map<String, dynamic>? ?? const {};
-    int stat(String key) => (stats[key] as num?)?.toInt() ?? 0;
+    final equipment =
+        (player.data?['equipment'] as Map<String, dynamic>?) ?? const {};
+    return CombatService.compute(stats: stats, equipment: equipment);
+  }
+
+  Fighter _makePlayerFighter(CombatStats combat) {
+    final player = PlayerRepository.instance;
     final level = player.level;
     return Fighter(
       name: player.name,
       level: level,
-      attack: 40 + stat('strength') * 2 + level * 2,
-      defense: 25 + stat('endurance') * 2,
-      agility: stat('agility'),
-      intuition: stat('intuition'),
-      maxHp: 100 + stat('endurance') * 5 + level * 10,
+      attack: combat.attack,
+      defense: combat.defense,
+      maxHp: combat.maxHp,
+      critChance: combat.critChance,
+      critDamage: combat.critDamage,
+      evasion: combat.evasion,
     );
   }
 
@@ -170,8 +186,11 @@ class _BattleScreenState extends State<BattleScreen> {
             onPressed: () {
               Navigator.pop(context);
               setState(() {
+                final combat = _computeCombat();
                 _engine = BattleEngine(
-                    player: _makePlayerFighter(), mob: widget.mob);
+                    player: _makePlayerFighter(combat),
+                    mob: widget.mob,
+                    dualWield: combat.dualWield);
                 _rewardsGranted = false;
               });
             },
@@ -195,6 +214,8 @@ class _BattleScreenState extends State<BattleScreen> {
         return const Color(0xFF80CCFF);
       case BattleLogKind.dodge:
         return const Color(0xFFCCCCCC);
+      case BattleLogKind.crit:
+        return const Color(0xFFFFD700);
       case BattleLogKind.result:
         return kGoldColor;
       case BattleLogKind.info:
@@ -214,8 +235,7 @@ class _BattleScreenState extends State<BattleScreen> {
       ),
       body: Column(
         children: [
-          _hpPanels(),
-          SizedBox(height: 170, child: _mobArt()),
+          SizedBox(height: 236, child: _battlefield()),
           const Divider(height: 1, color: Colors.black26),
           Expanded(child: _logPanel()),
           _choicePanels(),
@@ -224,60 +244,56 @@ class _BattleScreenState extends State<BattleScreen> {
     );
   }
 
-  Widget _mobArt() {
+  // ─────────────────────────── КУКЛЫ БОЙЦОВ ───────────────────────────
+
+  Widget _battlefield() {
     return Container(
       width: double.infinity,
       color: const Color(0x33000000),
-      child: Center(
-        child: MobArt(widget.mob.id, widget.mob.emoji,
-            width: 220, height: 200),
-      ),
-    );
-  }
-
-  Widget _hpPanels() {
-    final player = _engine.player;
-    final enemy = _engine.enemy;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: Row(
         children: [
-          Expanded(child: _fighterPanel(player, const Color(0xFF2E7D32))),
-          const Icon(Icons.sports_mma, color: kGoldColor, size: 28),
-          Expanded(child: _fighterPanel(enemy, const Color(0xFFB71C1C))),
+          Expanded(child: _playerPanel()),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Text('⚔️',
+                style: TextStyle(fontSize: 24, color: kGoldColor)),
+          ),
+          Expanded(child: _enemyPanel()),
         ],
       ),
     );
   }
 
-  Widget _fighterPanel(Fighter f, Color barColor) {
-    final pct = f.hp / f.maxHp;
+  Widget _fighterCaption(Fighter f, Color barColor) {
+    final pct = (f.hp / f.maxHp).clamp(0.0, 1.0);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Text(
           '${f.name} (ур. ${f.level})',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 12, color: Colors.white70),
+          style: const TextStyle(
+              fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
         ),
         const SizedBox(height: 4),
         Stack(
           children: [
             Container(
-              height: 14,
+              height: 12,
               decoration: BoxDecoration(
                 color: Colors.black45,
-                borderRadius: BorderRadius.circular(7),
+                borderRadius: BorderRadius.circular(6),
               ),
             ),
             FractionallySizedBox(
-              widthFactor: pct.clamp(0.0, 1.0),
+              widthFactor: pct,
               child: Container(
-                height: 14,
+                height: 12,
                 decoration: BoxDecoration(
                   color: barColor,
-                  borderRadius: BorderRadius.circular(7),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
@@ -285,7 +301,170 @@ class _BattleScreenState extends State<BattleScreen> {
         ),
         const SizedBox(height: 2),
         Text('${f.hp}/${f.maxHp}',
-            style: const TextStyle(fontSize: 11, color: Colors.white54)),
+            style: const TextStyle(fontSize: 10, color: Colors.white54)),
+      ],
+    );
+  }
+
+  /// Мини-слот шмота на кукле (только иконка, подпись по долгому тапу).
+  Widget _gearSlot(Map<String, dynamic> equipment, String key, double size) {
+    final inst = equipment[key];
+    final has = inst is Map<String, dynamic>;
+    final icon = has ? (inst['icon']?.toString() ?? '') : '';
+    return Tooltip(
+      message: key,
+      triggerMode: TooltipTriggerMode.longPress,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          border: Border.all(
+              color: has
+                  ? kGoldColor
+                  : kGoldColor.withOpacity(0.35),
+              width: has ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(6),
+          color: const Color(0x33221D18),
+        ),
+        child: Center(
+          child: has && icon.startsWith('http')
+              ? GameImage(icon, width: size * 0.7, height: size * 0.7,
+                  fit: BoxFit.contain)
+              : Text(icon,
+                  style: TextStyle(
+                      fontSize: has ? size * 0.55 : 8,
+                      color: has ? Colors.white : Colors.white24)),
+        ),
+      ),
+    );
+  }
+
+  Widget _gearColumn(Map<String, dynamic> equipment, List<String> keys,
+      {double size = 26}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (final k in keys)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 1),
+            child: _gearSlot(equipment, k, size),
+          ),
+      ],
+    );
+  }
+
+  Widget _miniStats(Fighter f, bool isPlayer) {
+    final parts = <String>[
+      '⚔️${f.attack}',
+      '🛡️${f.defense}',
+      '💨${f.evasion}%',
+      '🎯${f.critChance}%',
+      '💥${f.critDamage}%',
+      if (isPlayer && _combat.dualWield) '✌️2×удар',
+    ];
+    return Text(
+      parts.join('  '),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(fontSize: 10, color: Colors.white70),
+    );
+  }
+
+  Widget _playerPanel() {
+    final player = PlayerRepository.instance;
+    final equipment =
+        (player.data?['equipment'] as Map<String, dynamic>?) ?? const {};
+    final look = player.data?['look']?.toString() ?? '';
+    final doll = Container(
+      width: 118,
+      height: 158,
+      decoration: BoxDecoration(
+        border: Border.all(color: kGoldColor, width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        color: const Color(0x33221D18),
+      ),
+      child: look.isNotEmpty &&
+              (look.startsWith('http') ||
+                  ResourceService.instance.filePath(look) != null)
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.all(2),
+                child: GameImage(look, fit: BoxFit.contain)))
+          : const Center(
+              child: Text('🧍',
+                  style: TextStyle(fontSize: 44, color: Colors.white24)),
+            ),
+    );
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _fighterCaption(_engine.player, const Color(0xFF2E7D32)),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _gearColumn(equipment, ['helmet', 'armor', 'gloves', 'pants', 'boots']),
+            const SizedBox(width: 6),
+            doll,
+            const SizedBox(width: 6),
+            _gearColumn(equipment,
+                ['weapon', 'weapon2', 'shield', 'cloak', 'belt']),
+          ],
+        ),
+        const SizedBox(height: 5),
+        _miniStats(_engine.player, true),
+      ],
+    );
+  }
+
+  Widget _enemyPanel() {
+    final gear = mobGear[widget.mob.id] ??
+        mobGear[widget.mob.id.replaceFirst('boss_', '')] ??
+        const {'weapon': '⚔️', 'armor': '🛡️'};
+    final art = Container(
+      width: 118,
+      height: 158,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(color: const Color(0xFFCC4D4D), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        color: const Color(0x33221D18),
+      ),
+      child: MobArt(widget.mob.id, widget.mob.emoji, width: 110, height: 150),
+    );
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        _fighterCaption(_engine.enemy, const Color(0xFFB71C1C)),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _mobGearColumn(gear, front: false),
+            const SizedBox(width: 6),
+            art,
+            const SizedBox(width: 6),
+            _mobGearColumn(gear, front: true),
+          ],
+        ),
+        const SizedBox(height: 5),
+        _miniStats(_engine.enemy, false),
+      ],
+    );
+  }
+
+  /// Виртуальные слоты моба распределяем по двум колонкам вокруг куклы.
+  Widget _mobGearColumn(Map<String, String> gear, {required bool front}) {
+    final keys = gear.keys.toList();
+    return _gearColumn(
+      {
+        for (final k in front ? keys.sublist(keys.length ~/ 2) : keys.take(keys.length ~/ 2))
+          k: {'icon': gear[k]},
+      },
+      [
+        for (final k in front ? keys.sublist(keys.length ~/ 2) : keys.take(keys.length ~/ 2))
+          k,
       ],
     );
   }
@@ -295,12 +474,12 @@ class _BattleScreenState extends State<BattleScreen> {
     return Container(
       color: const Color(0xFF0D0D0D),
       child: ListView.builder(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         itemCount: log.length,
         itemBuilder: (context, i) {
           final entry = log[i];
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 1),
             child: Text(
               entry.text,
               style: TextStyle(
@@ -315,42 +494,41 @@ class _BattleScreenState extends State<BattleScreen> {
     );
   }
 
+  // ─────────────────────────── ВЫБОР ЗОН ───────────────────────────
+
   Widget _choicePanels() {
     return Container(
       color: kPanelColor,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('АТАКА — выберите зону:',
-                style: TextStyle(fontSize: 12, color: Colors.white70)),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final part in attackParts.keys)
-                Expanded(child: _zoneButton(part)),
-            ],
-          ),
+          _zoneRow(
+              title: _combat.dualWield
+                  ? 'АТАКА — оружие 1 (зона ×${(attackParts[_engine.selectedAttack ?? 'chest']!).toStringAsFixed(2)}):'
+                  : 'АТАКА — выбери 1 зону:',
+              selected: _engine.selectedAttack,
+              onTap: _engine.selectAttack,
+              accent: const Color(0xFFCC4D4D)),
+          if (_combat.dualWield) ...[
+            const SizedBox(height: 6),
+            _zoneRow(
+                title: 'АТАКА — оружие 2 (удар слабее):',
+                selected: _engine.selectedAttack2,
+                onTap: _engine.selectAttack2,
+                accent: const Color(0xFFCC7A4D)),
+          ],
           const SizedBox(height: 8),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text('ЗАЩИТА — выберите пару:',
-                style: TextStyle(fontSize: 12, color: Colors.white70)),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              for (final pair in blockPairs.keys)
-                Expanded(child: _blockButton(pair)),
-            ],
-          ),
+          _zoneRow(
+              title:
+                  'ЗАЩИТА — выбери 2 зоны (${_engine.selectedDefense.length}/2):',
+              selectedSet: _engine.selectedDefense,
+              onTap: _engine.toggleDefense,
+              accent: const Color(0xFF4D6ECC)),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
-            height: 48,
+            height: 46,
             child: FilledButton(
               onPressed: _engine.readyToStrike ? _engine.strike : null,
               style: FilledButton.styleFrom(
@@ -368,45 +546,50 @@ class _BattleScreenState extends State<BattleScreen> {
     );
   }
 
-  Widget _zoneButton(String part) {
-    final selected = _engine.selectedAttack == part;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: OutlinedButton(
-        onPressed: () => _engine.selectAttack(part),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? const Color(0xFFCC4D4D) : null,
-          side: BorderSide(
-            color: selected ? Colors.white : const Color(0xFFCC4D4D),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 8),
+  Widget _zoneRow({
+    required String title,
+    String? selected,
+    Set<String>? selectedSet,
+    required ValueChanged<String> onTap,
+    required Color accent,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(fontSize: 11, color: Colors.white70)),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            for (final part in attackParts.keys)
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                  child: OutlinedButton(
+                    onPressed: () => onTap(part),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor:
+                          (selectedSet?.contains(part) ?? selected == part)
+                              ? accent
+                              : null,
+                      side: BorderSide(
+                        color: (selectedSet?.contains(part) ?? selected == part)
+                            ? Colors.white
+                            : accent,
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 9),
+                      minimumSize: const Size(0, 0),
+                    ),
+                    child: Text(
+                      attackPartNames[part]!,
+                      style: const TextStyle(fontSize: 10, color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
-        child: Text(
-          attackPartNames[part]!,
-          style: const TextStyle(fontSize: 10, color: Colors.white),
-        ),
-      ),
-    );
-  }
-
-  Widget _blockButton(String pair) {
-    final selected = _engine.selectedBlock == pair;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
-      child: OutlinedButton(
-        onPressed: () => _engine.selectBlock(pair),
-        style: OutlinedButton.styleFrom(
-          backgroundColor: selected ? const Color(0xFF4D6ECC) : null,
-          side: BorderSide(
-            color: selected ? Colors.white : const Color(0xFF4D6ECC),
-          ),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-        ),
-        child: Text(
-          blockPairNames[pair]!,
-          style: const TextStyle(fontSize: 9, color: Colors.white),
-        ),
-      ),
+      ],
     );
   }
 }

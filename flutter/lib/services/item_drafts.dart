@@ -13,6 +13,7 @@ class ItemDraft {
   String? imagePath; // локальный путь к выбранной картинке
   String type; // equipment | consumable | material
   String? slot;
+  bool twoHanded; // двуручное оружие занимает обе руки
   int level;
   int price;
   String description;
@@ -29,6 +30,7 @@ class ItemDraft {
     this.imagePath,
     this.type = 'equipment',
     this.slot,
+    this.twoHanded = false,
     this.level = 1,
     this.price = 0,
     this.description = '',
@@ -46,6 +48,7 @@ class ItemDraft {
         'image_path': imagePath,
         'type': type,
         'slot': slot,
+        'two_handed': twoHanded,
         'level': level,
         'price': price,
         'description': description,
@@ -63,6 +66,7 @@ class ItemDraft {
         imagePath: j['image_path']?.toString(),
         type: j['type']?.toString() ?? 'equipment',
         slot: j['slot']?.toString(),
+        twoHanded: j['two_handed'] == true,
         level: (j['level'] as num?)?.toInt() ?? 1,
         price: (j['price'] as num?)?.toInt() ?? 0,
         description: j['description']?.toString() ?? '',

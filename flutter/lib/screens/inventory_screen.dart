@@ -65,6 +65,7 @@ class InventoryScreen extends StatelessWidget {
     'armor': 'Броня',
     'gloves': 'Перчатки',
     'weapon': 'Оружие',
+    'weapon2': 'Оружие 2',
     'pants': 'Штаны',
     'boots': 'Обувь',
     'cloak': 'Плащ',
@@ -158,10 +159,26 @@ class InventoryScreen extends StatelessWidget {
   Future<void> _equip(BuildContext context, int index,
       Map<String, dynamic> instance, Map<String, dynamic> info) async {
     final player = PlayerRepository.instance;
-    final slot = info['slot']?.toString() ?? 'weapon';
+    var slot = info['slot']?.toString() ?? 'weapon';
     final equipment =
         Map<String, dynamic>.from(player.data?['equipment'] ?? const {});
     final newInv = List<dynamic>.from(player.inventory);
+    final isTwo = info['two_handed'] == true;
+    if (slot == 'weapon') {
+      final mainOccupied = equipment['weapon'] != null;
+      final offOccupied = equipment['weapon2'] != null;
+      if (isTwo) {
+        // Двуручное занимает обе руки: второе оружие возвращается в рюкзак.
+        if (offOccupied) {
+          newInv.add(equipment['weapon2']);
+          equipment.remove('weapon2');
+        }
+      } else if (mainOccupied && !offOccupied) {
+        // Основное оружие уже надето, вторая рука свободна — парное оружие
+        // автоматически идёт во вторую руку (двуручный бой как в БК).
+        slot = 'weapon2';
+      }
+    }
     final previous = equipment[slot];
     final instanceSnapshot = {
       ...instance,
@@ -276,6 +293,17 @@ class InventoryScreen extends StatelessWidget {
                                 ? _okColor
                                 : _badColor,
                             fontSize: 14)),
+                    if (slotKey == null &&
+                        info['slot']?.toString() == 'weapon' &&
+                        info['two_handed'] == true) ...[
+                      const SizedBox(height: 2),
+                      const Text('✌️ Двуручное — занимает обе руки',
+                          style: TextStyle(color: kGoldColor, fontSize: 12)),
+                    ] else if (slotKey == null &&
+                        info['slot']?.toString() == 'weapon')
+                      const Text('⚔️ Можно в обе руки (парное)',
+                          style: TextStyle(
+                              color: Colors.white54, fontSize: 12)),
                     if (reqs.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       const Text('Требования:',
@@ -531,8 +559,19 @@ class InventoryScreen extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (final k in ['helmet', 'armor', 'gloves',
-                      'weapon', 'pants', 'boots']) ...[
+                  for (final k in ['helmet', 'armor', 'gloves']) ...[
+                    _slot(context, k, 38),
+                    const SizedBox(height: 2),
+                  ],
+                  Row(
+                    children: [
+                      _slot(context, 'weapon', 38),
+                      const SizedBox(width: 2),
+                      _slot(context, 'weapon2', 38),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  for (final k in ['pants', 'boots']) ...[
                     _slot(context, k, 38),
                     const SizedBox(height: 2),
                   ],

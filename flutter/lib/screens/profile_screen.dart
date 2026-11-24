@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/combat_service.dart';
 import '../services/player_repository.dart';
 import '../services/resource_service.dart';
 import '../widgets/game_image.dart';
@@ -71,19 +72,23 @@ class ProfileScreen extends StatelessWidget {
       }
     }
 
-    int finalAttack = ((100 + stat('strength') * 2) * attackMult).toInt() +
+    final equipment =
+        (data['equipment'] as Map<String, dynamic>?) ?? const {};
+    final combat = CombatService.compute(stats: stats, equipment: equipment);
+    int finalAttack = (combat.attack * attackMult).toInt() +
         (foodBuff != null &&
                 remaining(foodBuff) > 0 &&
                 (foodBuff['type'] ?? '') == 'strength'
             ? (foodBuff['value'] as num?)?.toInt() ?? 0
             : 0);
-    int finalDefense = ((50 + stat('endurance')) * defenseMult).toInt();
-    int finalHp = 200 + stat('endurance') * 5 + hpBonus;
-    int finalMana = 100 + stat('wisdom') * 3;
-    int critChance = (5 + stat('agility') * 0.5).toInt() + critBonus;
-    int critDamage = 150 + stat('intuition');
-    int evasion = (5 + stat('agility') * 0.5).toInt() + evasionBonus;
-    int magicFind = (5 + stat('intuition') * 0.3).toInt();
+    int finalDefense = (combat.defense * defenseMult).toInt();
+    int finalHp = combat.maxHp + hpBonus;
+    int finalMana = combat.maxMana;
+    int critChance = combat.critChance + critBonus;
+    int critDamage = combat.critDamage;
+    int evasion = combat.evasion + evasionBonus;
+    int magicFind = combat.magicFind;
+    if (combat.dualWield) finalAttack = (finalAttack * 1.2).round();
 
     String nick = player.name != 'Герой' ? player.name : '—';
 
@@ -183,6 +188,9 @@ class ProfileScreen extends StatelessWidget {
                       const SizedBox(height: 4),
                       kv('⚔️ Атака:', '$finalAttack'),
                       kv('🛡️ Защита:', '$finalDefense'),
+                      if (combat.dualWield)
+                        kv('✌️ Два оружия:',
+                            '2 удара в бою, атака +20%'),
                       kv('❤️ HP:', '$finalHp/$finalHp'),
                       kv('🧪 Мана:', '$finalMana/$finalMana'),
                       kv('🎯 Шанс крита:', '$critChance%'),
