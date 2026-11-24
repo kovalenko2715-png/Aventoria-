@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/combat_service.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
 import '../services/resource_service.dart';
@@ -164,19 +165,44 @@ class InventoryScreen extends StatelessWidget {
         Map<String, dynamic>.from(player.data?['equipment'] ?? const {});
     final newInv = List<dynamic>.from(player.inventory);
     final isTwo = info['two_handed'] == true;
+    // Левая рука как в БК: либо щит, либо второе оружие. Двуручное занимает
+    // обе руки — с ним ни щита, ни парного не бывает.
     if (slot == 'weapon') {
-      final mainOccupied = equipment['weapon'] != null;
-      final offOccupied = equipment['weapon2'] != null;
       if (isTwo) {
-        // Двуручное занимает обе руки: второе оружие возвращается в рюкзак.
-        if (offOccupied) {
-          newInv.add(equipment['weapon2']);
-          equipment.remove('weapon2');
+        for (final k in ['weapon2', 'shield']) {
+          if (equipment[k] != null) {
+            newInv.add(equipment[k]);
+            equipment.remove(k);
+          }
         }
-      } else if (mainOccupied && !offOccupied) {
-        // Основное оружие уже надето, вторая рука свободна — парное оружие
-        // автоматически идёт во вторую руку (двуручный бой как в БК).
-        slot = 'weapon2';
+      } else if (equipment['weapon'] != null) {
+        final leftHandFree =
+            equipment['weapon2'] == null && equipment['shield'] == null;
+        if (leftHandFree) {
+          newInv.add(equipment['weapon']);
+          equipment.remove('weapon');
+          slot = 'weapon2';
+        }
+      }
+    } else if (slot == 'weapon2' || slot == 'shield') {
+      final otherKey = slot == 'shield' ? 'weapon2' : 'shield';
+      if (slot == 'weapon2' && isTwo) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Двуручное в левую руку нельзя')));
+        }
+        return;
+      }
+      if (CombatService.isTwoHanded(equipment['weapon'])) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text('Двуручное занимает обе руки — сними его')));
+        }
+        return;
+      }
+      if (equipment[otherKey] != null) {
+        newInv.add(equipment[otherKey]);
+        equipment.remove(otherKey);
       }
     }
     final previous = equipment[slot];
