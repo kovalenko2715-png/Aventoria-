@@ -238,7 +238,7 @@ class _BattleScreenState extends State<BattleScreen> {
       ),
       body: Column(
         children: [
-          SizedBox(height: 236, child: _battlefield()),
+          SizedBox(height: 252, child: _battlefield()),
           const Divider(height: 1, color: Colors.black26),
           Expanded(child: _logPanel()),
           _choicePanels(),
@@ -379,8 +379,8 @@ class _BattleScreenState extends State<BattleScreen> {
         (player.data?['equipment'] as Map<String, dynamic>?) ?? const {};
     final look = player.data?['look']?.toString() ?? '';
     final doll = Container(
-      width: 118,
-      height: 158,
+      width: 108,
+      height: 152,
       decoration: BoxDecoration(
         border: Border.all(color: kGoldColor, width: 1.5),
         borderRadius: BorderRadius.circular(8),
@@ -407,15 +407,31 @@ class _BattleScreenState extends State<BattleScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _gearColumn(equipment, ['helmet', 'armor', 'gloves', 'pants', 'boots']),
-            const SizedBox(width: 6),
-            doll,
-            const SizedBox(width: 6),
             _gearColumn(equipment,
-                ['weapon', 'weapon2', 'shield', 'cloak', 'belt']),
+                ['mask', 'helmet', 'armor', 'shirt', 'pants', 'boots'],
+                size: 20),
+            const SizedBox(width: 5),
+            doll,
+            const SizedBox(width: 5),
+            _gearColumn(
+                equipment,
+                [
+                  'weapon',
+                  'weapon2',
+                  'shield',
+                  'gloves',
+                  'cloak',
+                  'necklace',
+                  'bracelet'
+                ],
+                size: 20),
           ],
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 3),
+        _gearColumn(equipment,
+            const ['wings', 'earring1', 'earring2', 'ring1', 'ring2', 'bag', 'rune'],
+            size: 17),
+        const SizedBox(height: 3),
         _miniStats(_engine.player, true),
       ],
     );
@@ -426,15 +442,15 @@ class _BattleScreenState extends State<BattleScreen> {
         mobGear[widget.mob.id.replaceFirst('boss_', '')] ??
         const {'weapon': '⚔️', 'armor': '🛡️'};
     final art = Container(
-      width: 118,
-      height: 158,
+      width: 108,
+      height: 152,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         border: Border.all(color: const Color(0xFFCC4D4D), width: 1.5),
         borderRadius: BorderRadius.circular(8),
         color: const Color(0x33221D18),
       ),
-      child: MobArt(widget.mob.id, widget.mob.emoji, width: 110, height: 150),
+      child: MobArt(widget.mob.id, widget.mob.emoji, width: 100, height: 144),
     );
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -499,6 +515,60 @@ class _BattleScreenState extends State<BattleScreen> {
 
   // ─────────────────────────── ВЫБОР ЗОН ───────────────────────────
 
+  /// Схема-кукла с зонами, как в БК: голова сверху, грудь+живот, пояс+ноги.
+  Widget _zoneDoll({
+    required String title,
+    String? selected,
+    Set<String>? selectedSet,
+    required ValueChanged<String> onTap,
+    required Color accent,
+  }) {
+    Widget zoneBtn(String part, {double fontSize = 9, EdgeInsets pad =
+        const EdgeInsets.symmetric(horizontal: 2, vertical: 7)}) {
+      final on = selectedSet?.contains(part) ?? selected == part;
+      return Expanded(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 1.5),
+          child: OutlinedButton(
+            onPressed: () => onTap(part),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: on ? accent : null,
+              side: BorderSide(color: on ? Colors.white : accent),
+              padding: pad,
+              minimumSize: const Size(0, 0),
+            ),
+            child: Text(
+              attackPartNames[part]!,
+              maxLines: 1,
+              style: TextStyle(fontSize: fontSize, color: Colors.white),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 10, color: Colors.white70)),
+        const SizedBox(height: 4),
+        zoneBtn('head'),
+        const SizedBox(height: 3),
+        Row(children: [zoneBtn('chest', pad: const EdgeInsets.symmetric(
+            horizontal: 2, vertical: 9)), zoneBtn('belly',
+            pad: const EdgeInsets.symmetric(horizontal: 2, vertical: 9))]),
+        Row(children: [
+          zoneBtn('groin', pad: const EdgeInsets.symmetric(
+              horizontal: 2, vertical: 9)),
+          zoneBtn('legs', pad: const EdgeInsets.symmetric(
+              horizontal: 2, vertical: 9)),
+        ]),
+      ],
+    );
+  }
+
   Widget _choicePanels() {
     return Container(
       color: kPanelColor,
@@ -506,93 +576,64 @@ class _BattleScreenState extends State<BattleScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _zoneRow(
-              title: _combat.dualWield
-                  ? 'АТАКА — оружие 1 (зона ×${(attackParts[_engine.selectedAttack ?? 'chest']!).toStringAsFixed(2)}):'
-                  : 'АТАКА — выбери 1 зону:',
-              selected: _engine.selectedAttack,
-              onTap: _engine.selectAttack,
-              accent: const Color(0xFFCC4D4D)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _zoneDoll(
+                    title: _combat.dualWield
+                        ? 'АТАКА (ор. 1):'
+                        : 'АТАКА — 1 зона:',
+                    selected: _engine.selectedAttack,
+                    onTap: _engine.selectAttack,
+                    accent: const Color(0xFFCC4D4D)),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _zoneDoll(
+                    title:
+                        'ЗАЩИТА — 2 зоны (${_engine.selectedDefense.length}/2):',
+                    selectedSet: _engine.selectedDefense,
+                    onTap: _engine.toggleDefense,
+                    accent: const Color(0xFF4D6ECC)),
+              ),
+            ],
+          ),
           if (_combat.dualWield) ...[
             const SizedBox(height: 6),
-            _zoneRow(
-                title: 'АТАКА — оружие 2 (удар слабее):',
-                selected: _engine.selectedAttack2,
-                onTap: _engine.selectAttack2,
-                accent: const Color(0xFFCC7A4D)),
-          ],
-          const SizedBox(height: 8),
-          _zoneRow(
-              title:
-                  'ЗАЩИТА — выбери 2 зоны (${_engine.selectedDefense.length}/2):',
-              selectedSet: _engine.selectedDefense,
-              onTap: _engine.toggleDefense,
-              accent: const Color(0xFF4D6ECC)),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: FilledButton(
-              onPressed: _engine.readyToStrike ? _engine.strike : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFB71C1C),
+            Row(children: [
+              const Text('ор. 2:',
+                  style: TextStyle(fontSize: 10, color: Colors.white70)),
+              const SizedBox(width: 6),
+              Expanded(
+                child: _zoneDoll(
+                    title: '',
+                    selected: _engine.selectedAttack2,
+                    onTap: _engine.selectAttack2,
+                    accent: const Color(0xFFCC7A4D)),
               ),
-              child: Text(
-                _engine.finished ? 'Бой окончен' : 'УДАРИТЬ!',
-                style: const TextStyle(
-                    fontSize: 18, fontWeight: FontWeight.bold),
+            ]),
+          ],
+          const SizedBox(height: 10),
+          Center(
+            child: SizedBox(
+              width: 240,
+              height: 44,
+              child: FilledButton(
+                onPressed: _engine.readyToStrike ? _engine.strike : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFB71C1C),
+                ),
+                child: Text(
+                  _engine.finished ? 'Бой окончен' : 'УДАРИТЬ!',
+                  style: const TextStyle(
+                      fontSize: 17, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _zoneRow({
-    required String title,
-    String? selected,
-    Set<String>? selectedSet,
-    required ValueChanged<String> onTap,
-    required Color accent,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title,
-            style: const TextStyle(fontSize: 11, color: Colors.white70)),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            for (final part in attackParts.keys)
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 3),
-                  child: OutlinedButton(
-                    onPressed: () => onTap(part),
-                    style: OutlinedButton.styleFrom(
-                      backgroundColor:
-                          (selectedSet?.contains(part) ?? selected == part)
-                              ? accent
-                              : null,
-                      side: BorderSide(
-                        color: (selectedSet?.contains(part) ?? selected == part)
-                            ? Colors.white
-                            : accent,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      minimumSize: const Size(0, 0),
-                    ),
-                    child: Text(
-                      attackPartNames[part]!,
-                      style: const TextStyle(fontSize: 10, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
     );
   }
 }

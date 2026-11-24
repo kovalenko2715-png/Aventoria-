@@ -7,6 +7,7 @@ import '../services/player_repository.dart';
 import '../services/resource_service.dart';
 import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
+import '../widgets/doll_panel.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -156,6 +157,16 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 10),
+            sectionTitle('ШМОТ'),
+            const SizedBox(height: 4),
+            DollPanel(
+              equipment: (data['equipment'] as Map<String, dynamic>?) ?? const {},
+              look: data['look']?.toString() ?? '',
+              dollWidth: 96,
+              dollHeight: 132,
+              slotSize: 26,
             ),
             const SizedBox(height: 10),
             Row(

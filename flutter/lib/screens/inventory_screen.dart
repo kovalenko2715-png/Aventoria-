@@ -5,8 +5,8 @@ import '../main.dart';
 import '../services/combat_service.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
-import '../services/resource_service.dart';
 import '../widgets/game_image.dart';
+import '../widgets/doll_panel.dart';
 import '../widgets/module_window.dart';
 
 Map<String, dynamic> _itemInfo(Map<String, dynamic> instance) {
@@ -454,58 +454,6 @@ class InventoryScreen extends StatelessWidget {
     );
   }
 
-  Widget _slot(BuildContext context, String slotKey, double size) {
-    final player = PlayerRepository.instance;
-    final equipment =
-        (player.data?['equipment'] as Map<String, dynamic>?) ?? const {};
-    final equipped = equipment[slotKey];
-    final label = slotLabels[slotKey] ?? slotKey;
-    final info0 = equipped is Map<String, dynamic> ? _itemInfo(equipped) : null;
-    final has = info0 != null;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Tooltip(
-          message: label,
-          triggerMode: TooltipTriggerMode.longPress,
-          child: InkWell(
-          onTap: has
-              ? () => _showItemDetail(
-                  context,
-                  instance: equipped is Map<String, dynamic>
-                      ? equipped
-                      : const {},
-                  info: info0,
-                  equipped: true,
-                  equippedItem: equipped,
-                  slotKey: slotKey)
-              : null,
-          customBorder: const CircleBorder(),
-          child: Container(
-            width: size,
-            height: size,
-            decoration: BoxDecoration(
-              border: Border.all(
-                  color: has
-                      ? kGoldColor
-                      : kGoldColor.withOpacity(0.45),
-                  width: has ? 2 : 1.2),
-              borderRadius: BorderRadius.circular(8),
-              color: const Color(0x33221D18),
-            ),
-            child: Center(
-              child: has
-                  ? _itemIconW(info0['icon']?.toString(), size * 0.48,
-                      box: size * 0.75)
-                  : const SizedBox.shrink(),
-            ),
-          ),
-        ),
-        ),
-      ],
-    );
-  }
-
   Widget _itemCell(BuildContext context, int index,
       Map<String, dynamic> instance) {
     final info = _itemInfo(instance);
@@ -567,102 +515,21 @@ class InventoryScreen extends StatelessWidget {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _slot(context, 'wings', 38),
-              const SizedBox(width: 4),
-              _slot(context, 'bracelet', 38),
-              const SizedBox(width: 4),
-              _slot(context, 'mask', 38),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final k in ['helmet', 'armor', 'gloves']) ...[
-                    _slot(context, k, 38),
-                    const SizedBox(height: 2),
-                  ],
-                  Row(
-                    children: [
-                      _slot(context, 'weapon', 38),
-                      const SizedBox(width: 2),
-                      _slot(context, 'weapon2', 38),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  for (final k in ['pants', 'boots']) ...[
-                    _slot(context, k, 38),
-                    const SizedBox(height: 2),
-                  ],
-                ],
-              ),
-              const SizedBox(width: 4),
-              Container(
-                width: 180,
-                height: 238,
-                decoration: BoxDecoration(
-                  border: Border.all(color: kGoldColor, width: 2),
-                  borderRadius: BorderRadius.circular(8),
-                  color: const Color(0x33221D18),
-                ),
-                child: look.isNotEmpty &&
-                        (look.startsWith('http') ||
-                            ResourceService.instance.filePath(look) != null)
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(6),
-                        child: Padding(
-                          padding: const EdgeInsets.all(2),
-                          child: GameImage(look, fit: BoxFit.contain)))
-                    : const Center(
-                        child: Text('🧍',
-                            style: TextStyle(
-                                fontSize: 40,
-                                color: Colors.white24)),
-                      ),
-              ),
-              const SizedBox(width: 4),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (final k in ['cloak', 'necklace']) ...[
-                    _slot(context, k, 38),
-                    const SizedBox(height: 2),
-                  ],
-                  Row(
-                    children: [
-                      _slot(context, 'earring1', 28),
-                      const SizedBox(width: 2),
-                      _slot(context, 'earring2', 28),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  for (final k in ['shield', 'shirt', 'belt']) ...[
-                    _slot(context, k, 38),
-                    const SizedBox(height: 2),
-                  ],
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _slot(context, 'ring1', 38),
-              const SizedBox(width: 4),
-              _slot(context, 'ring2', 38),
-              const SizedBox(width: 4),
-              _slot(context, 'bag', 38),
-              const SizedBox(width: 4),
-              _slot(context, 'rune', 38),
-            ],
+          DollPanel(
+            equipment: equipment,
+            look: look,
+            onSlotTap: (slotKey) {
+              final equipped = equipment[slotKey];
+              if (equipped is Map<String, dynamic>) {
+                _showItemDetail(
+                    context,
+                    instance: equipped,
+                    info: _itemInfo(equipped),
+                    equipped: true,
+                    equippedItem: equipped,
+                    slotKey: slotKey);
+              }
+            },
           ),
           const SizedBox(height: 8),
           const Text('СЛОТЫ РАСХОДНИКОВ',
@@ -733,27 +600,20 @@ class InventoryScreen extends StatelessWidget {
                                     color: Colors.white54, fontSize: 13)),
                           )
                         else
-                          LayoutBuilder(builder: (context, c) {
-                            final cellW = 64 + 8;
-                            final cols =
-                                (c.maxWidth / cellW).floor().clamp(1, 6);
-                            return GridView.builder(
-                              shrinkWrap: true,
-                              physics: const NeverScrollableScrollPhysics(),
-                              gridDelegate:
-                                  SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: cols,
-                                      mainAxisSpacing: 8,
-                                      crossAxisSpacing: 8,
-                                      childAspectRatio: 64 / 76),
-                              itemCount: inventory.length,
-                              itemBuilder: (context, i) => _itemCell(
-                                  context,
-                                  i,
-                                  inventory[i] as Map<String, dynamic>? ??
-                                      const {}),
-                            );
-                          }),
+                          // Wrap с фиксированными ячейками 64x76 — предметы
+                          // всегда настоящегоразмера, тап по всей ячейке.
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (var i = 0; i < inventory.length; i++)
+                                _itemCell(
+                                    context,
+                                    i,
+                                    inventory[i] as Map<String, dynamic>? ??
+                                        const {}),
+                            ],
+                          ),
                       ],
                     ),
                   ),
