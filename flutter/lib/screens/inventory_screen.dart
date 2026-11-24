@@ -411,7 +411,10 @@ class InventoryScreen extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        InkWell(
+        Tooltip(
+          message: label,
+          triggerMode: TooltipTriggerMode.longPress,
+          child: InkWell(
           onTap: has
               ? () => _showItemDetail(
                   context,
@@ -444,9 +447,7 @@ class InventoryScreen extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 1),
-        Text(label,
-            style: const TextStyle(color: Colors.white70, fontSize: 8)),
+        ),
       ],
     );
   }
@@ -515,11 +516,11 @@ class InventoryScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _slot(context, 'wings', 44),
+              _slot(context, 'wings', 38),
               const SizedBox(width: 4),
-              _slot(context, 'bracelet', 44),
+              _slot(context, 'bracelet', 38),
               const SizedBox(width: 4),
-              _slot(context, 'mask', 44),
+              _slot(context, 'mask', 38),
             ],
           ),
           const SizedBox(height: 3),
@@ -532,15 +533,15 @@ class InventoryScreen extends StatelessWidget {
                 children: [
                   for (final k in ['helmet', 'armor', 'gloves',
                       'weapon', 'pants', 'boots']) ...[
-                    _slot(context, k, 44),
+                    _slot(context, k, 38),
                     const SizedBox(height: 2),
                   ],
                 ],
               ),
               const SizedBox(width: 4),
               Container(
-                width: 120,
-                height: 160,
+                width: 180,
+                height: 238,
                 decoration: BoxDecoration(
                   border: Border.all(color: kGoldColor, width: 2),
                   borderRadius: BorderRadius.circular(8),
@@ -551,8 +552,9 @@ class InventoryScreen extends StatelessWidget {
                             ResourceService.instance.filePath(look) != null)
                     ? ClipRRect(
                         borderRadius: BorderRadius.circular(6),
-                        child:
-                            GameImage(look, fit: BoxFit.cover))
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: GameImage(look, fit: BoxFit.contain)))
                     : const Center(
                         child: Text('🧍',
                             style: TextStyle(
@@ -565,7 +567,7 @@ class InventoryScreen extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   for (final k in ['cloak', 'necklace']) ...[
-                    _slot(context, k, 44),
+                    _slot(context, k, 38),
                     const SizedBox(height: 2),
                   ],
                   Row(
@@ -577,7 +579,7 @@ class InventoryScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   for (final k in ['shield', 'shirt', 'belt']) ...[
-                    _slot(context, k, 44),
+                    _slot(context, k, 38),
                     const SizedBox(height: 2),
                   ],
                 ],
@@ -588,13 +590,13 @@ class InventoryScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _slot(context, 'ring1', 44),
+              _slot(context, 'ring1', 38),
               const SizedBox(width: 4),
-              _slot(context, 'ring2', 44),
+              _slot(context, 'ring2', 38),
               const SizedBox(width: 4),
-              _slot(context, 'bag', 44),
+              _slot(context, 'bag', 38),
               const SizedBox(width: 4),
-              _slot(context, 'rune', 44),
+              _slot(context, 'rune', 38),
             ],
           ),
           const SizedBox(height: 8),
@@ -611,8 +613,8 @@ class InventoryScreen extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 3),
                   child: Container(
-                    width: 44,
-                    height: 44,
+                    width: 38,
+                    height: 38,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border.all(
@@ -667,7 +669,7 @@ class InventoryScreen extends StatelessWidget {
                           )
                         else
                           LayoutBuilder(builder: (context, c) {
-                            final cellW = 95 + 8;
+                            final cellW = 64 + 8;
                             final cols =
                                 (c.maxWidth / cellW).floor().clamp(1, 6);
                             return GridView.builder(
@@ -678,7 +680,7 @@ class InventoryScreen extends StatelessWidget {
                                       crossAxisCount: cols,
                                       mainAxisSpacing: 8,
                                       crossAxisSpacing: 8,
-                                      childAspectRatio: 95 / 105),
+                                      childAspectRatio: 64 / 76),
                               itemCount: inventory.length,
                               itemBuilder: (context, i) => _itemCell(
                                   context,
