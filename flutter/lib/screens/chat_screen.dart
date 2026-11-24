@@ -25,8 +25,10 @@ class _ChatScreenState extends State<ChatScreen>
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
   String _tab = 'general';
-  String? _pmTargetUid;
-  String _pmTargetName = '';
+  String? _pmDialogUid;
+  String _pmDialogName = '';
+  String? _pmActiveUid; // сейчас открытый диалог
+  String _pmActiveName = '';
 
   static const _tabNames = {
     'general': 'Общий',
@@ -48,6 +50,7 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     ChatService.instance.startHeartbeat();
+    _cleanupOldPms();
     _blink = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -56,9 +59,34 @@ class _ChatScreenState extends State<ChatScreen>
       if (_tabs.indexIsChanging) return;
       setState(() {
         _tab = _tabNames.keys.elementAt(_tabs.index);
-        if (_tab != 'personal') _pmTargetUid = null;
+        if (_tab != 'personal') { _pmDialogUid = null; _pmActiveUid = null; }
+        else _cleanupOldPms();
       });
     });
+  }
+
+  /// Авто-чистка: личные сообщения старше 7 дней удаляются из базы
+  /// (одна проверка за сессию, пачкой до 400 шт.).
+  bool _pmCleanupDone = false;
+  Future<void> _cleanupOldPms() async {
+    if (_pmCleanupDone) return;
+    _pmCleanupDone = true;
+    try {
+      final cutoff =
+          Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7)));
+      final old = await FirebaseFirestore.instance
+          .collection('chat')
+          .where('tab', isEqualTo: 'personal')
+          .where('created_at', isLessThan: cutoff)
+          .limit(400)
+          .get();
+      if (old.docs.isEmpty) return;
+      final batch = FirebaseFirestore.instance.batch();
+      for (final d in old.docs) {
+        batch.delete(d.reference);
+      }
+      await batch.commit();
+    } catch (_) {}
   }
 
   @override
@@ -78,10 +106,16 @@ class _ChatScreenState extends State<ChatScreen>
     }
     final text = _input.text.trim();
     if (text.isEmpty) return;
-    if (_tab == 'personal' && _pmTargetUid == null) {
+    if (_tab == 'personal' && _pmActiveUid == null &&
+        _pmDialogUid == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Выбери игрока справа и «Написать»')));
+          content: Text('Открой диалог: тапни ник игрока → «Написать»')));
       return;
+    }
+    if (_tab == 'personal' && _pmActiveUid == null &&
+        _pmDialogUid != null) {
+      _pmActiveUid = _pmDialogUid;
+      _pmActiveName = _pmDialogName;
     }
     _input.clear();
     final user = FirebaseAuth.instance.currentUser;
@@ -99,9 +133,11 @@ class _ChatScreenState extends State<ChatScreen>
       'level': player.level,
       'tab': _tab,
       'text': text,
-      if (_tab == 'personal' && _pmTargetUid != null) ...{
-        'to_uid': _pmTargetUid,
-        'to_name': _pmTargetName,
+      if (_tab == 'personal') ...{
+        'to_uid': _pmActiveUid ?? _pmDialogUid,
+        'to_name': _pmActiveName.isNotEmpty
+            ? _pmActiveName
+            : _pmDialogName,
       },
       'created_at': FieldValue.serverTimestamp(),
     });
@@ -183,9 +219,12 @@ class _ChatScreenState extends State<ChatScreen>
                         setState(() {
                           _tabs.animateTo(4);
                           _tab = 'personal';
-                          _pmTargetUid = uid;
-                          _pmTargetName = name;
+                          _pmDialogUid = uid;
+                          _pmDialogName = name;
+                          _pmActiveUid = uid;
+                          _pmActiveName = name;
                         });
+                        _cleanupOldPms();
                       }),
                     ],
                   ],
@@ -227,6 +266,102 @@ class _ChatScreenState extends State<ChatScreen>
       }
       return msg['tab'] == _tab;
     }).take(60).toList();
+  }
+
+  Widget _pmDialogList(
+      List<QueryDocumentSnapshot<Map<String, dynamic>>> docs,
+      double chatFontSize) {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    // группируем по собеседнику: первое вхождение = самое свежее
+    final others = <String>[];
+    final names = <String, String>{};
+    final lastMsg = <String, Map<String, dynamic>>{};
+    for (final d in docs) {
+      final m = d.data();
+      final u = m['uid']?.toString() ?? '';
+      final t = m['to_uid']?.toString() ?? '';
+      final fromMe = u == me;
+      final other = fromMe ? t : u;
+      final otherName = fromMe
+          ? (m['to_name']?.toString() ?? '???')
+          : (m['name']?.toString() ?? '???');
+      if (other.isEmpty || other == me) continue;
+      if (!lastMsg.containsKey(other)) {
+        others.add(other);
+        names[other] = otherName;
+        lastMsg[other] = m;
+      }
+    }
+    if (others.isEmpty) {
+      return const Center(
+        child: Text(
+            'Личных сообщений нет.\n\nТапни ник игрока в чате →\n«Написать» — начнётся диалог.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white54, fontSize: 12)),
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      itemCount: others.length,
+      itemBuilder: (context, i) =>
+          _pmDialogRow(others[i], names[others[i]] ?? '???',
+              lastMsg[others[i]]!, chatFontSize),
+    );
+  }
+
+  Widget _pmDialogRow(String uid, String name,
+      Map<String, dynamic> last, double chatFontSize) {
+    final me = FirebaseAuth.instance.currentUser?.uid;
+    final fromMe = last['uid']?.toString() == me;
+    final text = last['text']?.toString() ?? '';
+    final ts = last['created_at'] as Timestamp?;
+    final dt = ts?.toDate();
+    final time = dt == null
+        ? ''
+        : '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')} '
+            '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return GestureDetector(
+      onTap: () => setState(() {
+        _pmActiveUid = uid;
+        _pmActiveName = name;
+      }),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        margin: const EdgeInsets.only(bottom: 4),
+        decoration: BoxDecoration(
+          color: const Color(0x33221D18),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kChatPersonal.withOpacity(0.35)),
+        ),
+        child: Row(children: [
+          Text(fromMe ? '📤' : '✉️',
+              style: const TextStyle(fontSize: 15)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          color: kChatPersonal,
+                          fontSize: chatFontSize + 1,
+                          fontWeight: FontWeight.w700)),
+                  Text('${fromMe ? 'ты: ' : ''}$text',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 11)),
+                ]),
+          ),
+          const SizedBox(width: 6),
+          Text(time,
+              style: const TextStyle(
+                  color: Colors.white38, fontSize: 9)),
+        ]),
+      ),
+    );
   }
 
   Widget _messageRow(QueryDocumentSnapshot<Map<String, dynamic>> doc,
@@ -333,27 +468,32 @@ class _ChatScreenState extends State<ChatScreen>
                               horizontal: 8, vertical: 4),
                           child: Row(
                             children: [
+                              if (_pmActiveUid != null)
+                                GestureDetector(
+                                  onTap: () => setState(() {
+                                    _pmActiveUid = null;
+                                    _pmActiveName = '';
+                                  }),
+                                  child: const Padding(
+                                    padding: EdgeInsets.only(right: 6),
+                                    child: Icon(Icons.arrow_back,
+                                        size: 16, color: kChatPersonal),
+                                  ),
+                                ),
                               Expanded(
                                 child: Text(
-                                  _pmTargetUid == null
-                                      ? 'Личные: выбери игрока справа → «Написать»'
-                                      : 'Личное для: $_pmTargetName',
+                                  _pmActiveUid == null
+                                      ? 'Личные: тапни ник → «Написать», или открой диалог'
+                                      : 'Личное с $_pmActiveName',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                      color: _pmTargetUid == null
+                                      color: _pmActiveUid == null
                                           ? Colors.white38
                                           : kChatPersonal,
                                       fontSize: 11),
                                 ),
                               ),
-                              if (_pmTargetUid != null)
-                                GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _pmTargetUid = null),
-                                  child: const Icon(Icons.close,
-                                      size: 14, color: Colors.white38),
-                                ),
                             ],
                           ),
                         ),
@@ -389,13 +529,37 @@ class _ChatScreenState extends State<ChatScreen>
                                   ChatService.instance.adminRanksStream(),
                               builder: (context, ranksSnap) {
                                 final ranks = ranksSnap.data ?? const {};
+                                final me =
+                                    FirebaseAuth.instance.currentUser?.uid;
+                                if (_tab == 'personal' &&
+                                    _pmActiveUid == null) {
+                                  return _pmDialogList(docs, chatFontSize);
+                                }
+                                var list = docs;
+                                if (_tab == 'personal' &&
+                                    _pmActiveUid != null) {
+                                  final other = _pmActiveUid;
+                                  list = docs
+                                      .where((d) {
+                                        final m = d.data();
+                                        final u =
+                                            m['uid']?.toString() ?? '';
+                                        final t =
+                                            m['to_uid']?.toString() ?? '';
+                                        return (u == other && t == me) ||
+                                            (u == me && t == other);
+                                      })
+                                      .toList()
+                                      .reversed
+                                      .toList();
+                                }
                                 return ListView.builder(
                                   controller: _scroll,
                                   padding: const EdgeInsets.fromLTRB(
                                       10, 8, 10, 8),
-                                  itemCount: docs.length,
+                                  itemCount: list.length,
                                   itemBuilder: (context, i) =>
-                                      _messageRow(docs[i],
+                                      _messageRow(list[i],
                                           ranks, chatFontSize),
                                 );
                               },
