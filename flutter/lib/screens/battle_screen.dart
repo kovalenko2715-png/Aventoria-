@@ -515,32 +515,26 @@ class _BattleScreenState extends State<BattleScreen> {
 
   // ─────────────────────────── ВЫБОР ЗОН ───────────────────────────
 
-  /// Схема-кукла с зонами, как в БК: голова сверху, грудь+живот, пояс+ноги.
-  Widget _zoneDoll({
-    required String title,
-    String? selected,
-    Set<String>? selectedSet,
-    required ValueChanged<String> onTap,
-    required Color accent,
-  }) {
-    Widget zoneBtn(String part, {double fontSize = 9, EdgeInsets pad =
-        const EdgeInsets.symmetric(horizontal: 2, vertical: 7)}) {
-      final on = selectedSet?.contains(part) ?? selected == part;
-      return Expanded(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 1.5),
+  /// Зоны — компактным рядом мелких кнопок (как в БК): атака сверху,
+  /// защита под ней, всё по центру. Лог остаётся в центре экрана.
+  Widget _zoneRows() {
+    Widget zoneBtn(String part, Color accent, bool on, VoidCallback tap) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 3),
+        child: SizedBox(
+          width: 92,
           child: OutlinedButton(
-            onPressed: () => onTap(part),
+            onPressed: tap,
             style: OutlinedButton.styleFrom(
               backgroundColor: on ? accent : null,
               side: BorderSide(color: on ? Colors.white : accent),
-              padding: pad,
+              padding: const EdgeInsets.symmetric(vertical: 8),
               minimumSize: const Size(0, 0),
             ),
             child: Text(
               attackPartNames[part]!,
               maxLines: 1,
-              style: TextStyle(fontSize: fontSize, color: Colors.white),
+              style: const TextStyle(fontSize: 10, color: Colors.white),
             ),
           ),
         ),
@@ -550,21 +544,68 @@ class _BattleScreenState extends State<BattleScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 10, color: Colors.white70)),
+        Text(
+          _combat.dualWield
+              ? 'АТАКА — оружие 1:'
+              : 'АТАКА — выбери 1 зону:',
+          style: const TextStyle(fontSize: 11, color: Colors.white70),
+        ),
         const SizedBox(height: 4),
-        zoneBtn('head'),
-        const SizedBox(height: 3),
-        Row(children: [zoneBtn('chest', pad: const EdgeInsets.symmetric(
-            horizontal: 2, vertical: 9)), zoneBtn('belly',
-            pad: const EdgeInsets.symmetric(horizontal: 2, vertical: 9))]),
-        Row(children: [
-          zoneBtn('groin', pad: const EdgeInsets.symmetric(
-              horizontal: 2, vertical: 9)),
-          zoneBtn('legs', pad: const EdgeInsets.symmetric(
-              horizontal: 2, vertical: 9)),
-        ]),
+        Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            for (final part in attackParts.keys)
+              zoneBtn(part, const Color(0xFFCC4D4D),
+                  _engine.selectedAttack == part,
+                  () => _engine.selectAttack(part)),
+          ],
+        ),
+        if (_combat.dualWield) ...[
+          const SizedBox(height: 5),
+          Text('АТАКА — оружие 2 (удар слабее):',
+              style: const TextStyle(fontSize: 11, color: Colors.white70)),
+          const SizedBox(height: 4),
+          Wrap(
+            alignment: WrapAlignment.center,
+            children: [
+              for (final part in attackParts.keys)
+                zoneBtn(part, const Color(0xFFCC7A4D),
+                    _engine.selectedAttack2 == part,
+                    () => _engine.selectAttack2(part)),
+            ],
+          ),
+        ],
+        const SizedBox(height: 8),
+        Text('ЗАЩИТА — выбери 2 зоны (${_engine.selectedDefense.length}/2):',
+            style: const TextStyle(fontSize: 11, color: Colors.white70)),
+        const SizedBox(height: 4),
+        Wrap(
+          alignment: WrapAlignment.center,
+          children: [
+            for (final part in attackParts.keys)
+              zoneBtn(part, const Color(0xFF4D6ECC),
+                  _engine.selectedDefense.contains(part),
+                  () => _engine.toggleDefense(part)),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Center(
+          child: SizedBox(
+            width: 240,
+            height: 44,
+            child: FilledButton(
+              onPressed: _engine.readyToStrike ? _engine.strike : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFB71C1C),
+              ),
+              child: Text(
+                _engine.finished ? 'Бой окончен' : 'УДАРИТЬ!',
+                style: const TextStyle(
+                    fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -573,67 +614,7 @@ class _BattleScreenState extends State<BattleScreen> {
     return Container(
       color: kPanelColor,
       padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _zoneDoll(
-                    title: _combat.dualWield
-                        ? 'АТАКА (ор. 1):'
-                        : 'АТАКА — 1 зона:',
-                    selected: _engine.selectedAttack,
-                    onTap: _engine.selectAttack,
-                    accent: const Color(0xFFCC4D4D)),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: _zoneDoll(
-                    title:
-                        'ЗАЩИТА — 2 зоны (${_engine.selectedDefense.length}/2):',
-                    selectedSet: _engine.selectedDefense,
-                    onTap: _engine.toggleDefense,
-                    accent: const Color(0xFF4D6ECC)),
-              ),
-            ],
-          ),
-          if (_combat.dualWield) ...[
-            const SizedBox(height: 6),
-            Row(children: [
-              const Text('ор. 2:',
-                  style: TextStyle(fontSize: 10, color: Colors.white70)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: _zoneDoll(
-                    title: '',
-                    selected: _engine.selectedAttack2,
-                    onTap: _engine.selectAttack2,
-                    accent: const Color(0xFFCC7A4D)),
-              ),
-            ]),
-          ],
-          const SizedBox(height: 10),
-          Center(
-            child: SizedBox(
-              width: 240,
-              height: 44,
-              child: FilledButton(
-                onPressed: _engine.readyToStrike ? _engine.strike : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFFB71C1C),
-                ),
-                child: Text(
-                  _engine.finished ? 'Бой окончен' : 'УДАРИТЬ!',
-                  style: const TextStyle(
-                      fontSize: 17, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      child: _zoneRows(),
     );
   }
 }
