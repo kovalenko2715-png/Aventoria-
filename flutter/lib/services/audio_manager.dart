@@ -14,6 +14,10 @@ class AudioManager {
     'audio/menu.mp3',
   ];
 
+  /// Боевая музыка: трек из пачки ресурсов, луп на весь бой.
+  static const String _battleTrack = 'audio/battle_1.mp3';
+  int _prevTrackIndex = 0;
+
   final AudioPlayer _player = AudioPlayer();
   int _trackIndex = 0;
   bool _enabled = true;
@@ -41,6 +45,28 @@ class AudioManager {
     _completeSub = _player.onPlayerComplete.listen((_) => _playNextMenuTrack());
     _trackIndex = 0;
     await _playCurrentMenuTrack();
+  }
+
+  /// Музыка боя (зацикливается). Запуск — на входе в бой.
+  Future<void> startBattleMusic() async {
+    try {
+      _prevTrackIndex = _trackIndex;
+      await _player.setReleaseMode(ReleaseMode.loop);
+      await _player
+          .play(_resolve(_battleTrack))
+          .timeout(const Duration(seconds: 5));
+    } catch (_) {}
+  }
+
+  /// Выход из боя: возвращаемся к обычному списку треков меню.
+  Future<void> stopBattleMusic() async {
+    try {
+      await _player.stop();
+    } catch (_) {}
+    if (_enabled && _volume > 0) {
+      _trackIndex = _prevTrackIndex;
+      await _playCurrentMenuTrack();
+    }
   }
 
   Future<void> _playCurrentMenuTrack() async {

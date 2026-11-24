@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../data/game_data.dart';
 import '../main.dart';
+import '../services/audio_manager.dart';
 import '../services/battle_engine.dart';
 import '../services/combat_service.dart';
 import '../services/player_repository.dart';
@@ -36,11 +37,13 @@ class _BattleScreenState extends State<BattleScreen> {
         player: _makePlayerFighter(_combat), mob: widget.mob,
         dualWield: _combat.dualWield);
     _engine.addListener(_onEngineChanged);
+    AudioManager.instance.startBattleMusic();
   }
 
   @override
   void dispose() {
     _engine.removeListener(_onEngineChanged);
+    AudioManager.instance.stopBattleMusic();
     super.dispose();
   }
 
