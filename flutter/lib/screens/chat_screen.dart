@@ -50,7 +50,7 @@ class _ChatScreenState extends State<ChatScreen>
   void initState() {
     super.initState();
     ChatService.instance.startHeartbeat();
-    _cleanupOldPms();
+    _cleanupOldMessages();
     _blink = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
@@ -60,32 +60,44 @@ class _ChatScreenState extends State<ChatScreen>
       setState(() {
         _tab = _tabNames.keys.elementAt(_tabs.index);
         if (_tab != 'personal') { _pmDialogUid = null; _pmActiveUid = null; }
-        else _cleanupOldPms();
+        else _cleanupOldMessages();
       });
     });
   }
 
-  /// Авто-чистка: личные сообщения старше 7 дней удаляются из базы
-  /// (одна проверка за сессию, пачкой до 400 шт.).
-  bool _pmCleanupDone = false;
-  Future<void> _cleanupOldPms() async {
-    if (_pmCleanupDone) return;
-    _pmCleanupDone = true;
+  /// Авто-чистка базы за сессию (пачками до 400 шт.):
+  /// публичные вкладки (общий/торговля/гильдия/система) — старше 30 дней,
+  /// личные сообщения — старше 7 дней.
+  bool _cleanupDone = false;
+  Future<void> _cleanupOldMessages() async {
+    if (_cleanupDone) return;
+    _cleanupDone = true;
     try {
-      final cutoff =
-          Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7)));
-      final old = await FirebaseFirestore.instance
-          .collection('chat')
-          .where('tab', isEqualTo: 'personal')
-          .where('created_at', isLessThan: cutoff)
-          .limit(400)
-          .get();
-      if (old.docs.isEmpty) return;
-      final batch = FirebaseFirestore.instance.batch();
-      for (final d in old.docs) {
-        batch.delete(d.reference);
+      final db = FirebaseFirestore.instance;
+      final now = DateTime.now();
+      final jobs = <(String, int)>[
+        ('general', 30),
+        ('trade', 30),
+        ('guild', 30),
+        ('system', 30),
+        ('personal', 7),
+      ];
+      for (final (tab, days) in jobs) {
+        final cutoff =
+            Timestamp.fromDate(now.subtract(Duration(days: days)));
+        final old = await db
+            .collection('chat')
+            .where('tab', isEqualTo: tab)
+            .where('created_at', isLessThan: cutoff)
+            .limit(400)
+            .get();
+        if (old.docs.isEmpty) continue;
+        final batch = db.batch();
+        for (final d in old.docs) {
+          batch.delete(d.reference);
+        }
+        await batch.commit();
       }
-      await batch.commit();
     } catch (_) {}
   }
 
@@ -224,7 +236,7 @@ class _ChatScreenState extends State<ChatScreen>
                           _pmActiveUid = uid;
                           _pmActiveName = name;
                         });
-                        _cleanupOldPms();
+                        _cleanupOldMessages();
                       }),
                     ],
                   ],

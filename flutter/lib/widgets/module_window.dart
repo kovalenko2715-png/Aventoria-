@@ -81,6 +81,40 @@ class ModuleWindow extends StatelessWidget {
   }
 }
 
+/// Открыть экран как плавающее окно поверх текущего (стек окон, как в БК):
+/// затемняет предыдущее окно, само закрывается крестиком.
+Future<void> pushModuleWindow(BuildContext context, Widget screen) async {
+  await Navigator.of(context).push(
+    PageRouteBuilder(
+      opaque: false,
+      barrierColor: Colors.black.withOpacity(0.45),
+      barrierDismissible: true,
+      transitionDuration: const Duration(milliseconds: 160),
+      pageBuilder: (_, __, ___) => Material(
+        type: MaterialType.transparency,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 78, 14, 62),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: screen,
+            ),
+          ),
+        ),
+      ),
+      transitionsBuilder: (_, anim, __, child) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.93, end: 1.0).animate(
+            CurvedAnimation(parent: anim, curve: Curves.easeOutCubic),
+          ),
+          child: child,
+        ),
+      ),
+    ),
+  );
+}
+
 class GameCard extends StatelessWidget {
   final Widget child;
   final Color? borderColor;

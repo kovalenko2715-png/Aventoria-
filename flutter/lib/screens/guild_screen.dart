@@ -24,14 +24,11 @@ class GuildScreen extends StatelessWidget {
     final points =
         (player.data?['guild_quest_points'] as num?)?.toInt() ?? 0;
     final navButtons = [
-      ('📋 ДОСКА ЗАДАНИЙ', () => Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => const QuestsScreen(board: true)))),
-      ('⚔️ АРЕНА', () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const ArenaScreen()))),
-      ('🏆 ЗАЛ СЛАВЫ', () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const HallScreen()))),
-      ('📦 ХРАНИЛИЩЕ', () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const StorageScreen()))),
+      ('📋 ДОСКА ЗАДАНИЙ',
+          () => pushModuleWindow(context, const QuestsScreen(board: true))),
+      ('⚔️ АРЕНА', () => pushModuleWindow(context, const ArenaScreen())),
+      ('🏆 ЗАЛ СЛАВЫ', () => pushModuleWindow(context, const HallScreen())),
+      ('📦 ХРАНИЛИЩЕ', () => pushModuleWindow(context, const StorageScreen())),
     ];
 
     return ModuleWindow(
