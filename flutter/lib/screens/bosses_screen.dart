@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../data/game_data.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
-import '../screens/battle_screen.dart';
+import '../widgets/mob_info_window.dart';
 import '../widgets/module_window.dart';
 
 class BossesScreen extends StatelessWidget {
@@ -25,12 +25,9 @@ class BossesScreen extends StatelessWidget {
   }
 
   void _openBoss(BuildContext context, MapEntry<String, dynamic> entry) {
-    final boss = entry.value as Map<String, dynamic>;
-    final mob = mobFromBoss(entry.key, boss);
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => BattleScreen(mob: mob)),
-    );
+    final mob = mobFromBoss(entry.key, entry.value as Map<String, dynamic>);
+    // Как в оригинале: сначала окно с информацией, бой — по кнопке в нём.
+    showMobInfoWindow(context, mob);
   }
 
   Widget _bossCard(BuildContext context, MapEntry<String, dynamic> entry) {

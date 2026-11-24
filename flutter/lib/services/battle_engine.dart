@@ -190,8 +190,13 @@ enum BattleLogKind { info, damage, block, dodge, crit, result }
 class BattleLogEntry {
   final String text;
   final BattleLogKind kind;
-  const BattleLogEntry(this.text, this.kind);
+  final DateTime time;
+  BattleLogEntry(this.text, this.kind) : time = DateTime.now();
 }
+
+/// Время строки лога как в БК — «часы:минуты» зелёным перед текстом.
+String logStamp(DateTime t) =>
+    '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
 /// БК-бой: атака — 1 зона (или 2 при двух оружиях), защита — ровно 2 зоны.
 /// Крит пробивает блок. Заблокированный удар — 25% урона.
@@ -235,7 +240,7 @@ class BattleEngine extends ChangeNotifier {
     _log.add(BattleLogEntry(
         '⚔️ Бой против ${mob.name} (ур. ${mob.level}) начался!',
         BattleLogKind.info));
-    _log.add(const BattleLogEntry(
+    _log.add(BattleLogEntry(
         'Атака — 1 зона, защита — 2 зоны. Крит пробивает блок.',
         BattleLogKind.info));
   }
@@ -409,7 +414,7 @@ class BattleEngine extends ChangeNotifier {
     if (!player.isAlive) {
       _finished = true;
       _victory = false;
-      _log.add(const BattleLogEntry('☠️ ПОРАЖЕНИЕ', BattleLogKind.result));
+      _log.add(BattleLogEntry('☠️ ПОРАЖЕНИЕ', BattleLogKind.result));
     } else if (!_enemy.isAlive) {
       _finished = true;
       _victory = true;

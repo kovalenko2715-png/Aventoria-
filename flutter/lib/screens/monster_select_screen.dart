@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
 import '../widgets/mob_art.dart';
-import 'battle_screen.dart';
+import '../widgets/mob_info_window.dart';
 
 class MonsterSelectScreen extends StatelessWidget {
   const MonsterSelectScreen({super.key});
@@ -36,14 +36,8 @@ class MonsterSelectScreen extends StatelessWidget {
                 '💰${mob.goldMin}-${mob.goldMax}',
                 style: const TextStyle(color: kGoldColor, fontSize: 12),
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => BattleScreen(mob: mob),
-                  ),
-                );
-              },
+              // Как в оригинале: тап — окно с информацией, в бой — только из него.
+              onTap: () => showMobInfoWindow(context, mob),
             ),
           );
         },

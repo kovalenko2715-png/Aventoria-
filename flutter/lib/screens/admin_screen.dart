@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 
@@ -150,7 +152,10 @@ class AdminScreen extends StatelessWidget {
             style:
                 const TextStyle(color: kGoldColor, fontFamily: 'monospace')),
         content: SizedBox(
-          width: 470,
+          // Форма не масштабируется в дизайне — считаем от реального экрана,
+          // иначе на телефоне диалог вылезает за края и «закрывается».
+          width: min(MediaQuery.of(ctx).size.width - 64, 470),
+          height: min(MediaQuery.of(ctx).size.height - 120, 560),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -266,7 +271,11 @@ _field(cReqs,
           TextButton(
               onPressed: () async {
                 final id = cId.text.trim();
-                if (id.isEmpty) return;
+                if (id.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Заполните ID предмета (латиницей)')));
+                  return;
+                }
                 final fields = <String, dynamic>{
                   'name': cName.text.trim(),
                   'icon': cIcon.text.trim(),
@@ -287,14 +296,24 @@ _field(cReqs,
                   fields['durability'] = existing?['durability'] ?? 100;
                 }
                 final cat = ItemsCatalog.instance;
-                await cat.saveItem(id, fields, shop: cShop.value, shopFields: {
-                  'name': fields['name'],
-                  'icon': fields['icon'],
-                  if (cShop.value)
-                    'price_gold': int.tryParse(cPriceGold.text.trim()) ?? 0,
-                  if (cShop.value)
-                    'price_rune': int.tryParse(cPriceRune.text.trim()) ?? 0,
-                });
+                try {
+                  await cat.saveItem(id, fields,
+                      shop: cShop.value, shopFields: {
+                        'name': fields['name'],
+                        'icon': fields['icon'],
+                        if (cShop.value)
+                          'price_gold':
+                              int.tryParse(cPriceGold.text.trim()) ?? 0,
+                        if (cShop.value)
+                          'price_rune':
+                              int.tryParse(cPriceRune.text.trim()) ?? 0,
+                      });
+                } catch (e) {
+                  // Окно НЕ закрываем — сохранение не прошло.
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text('Не удалось сохранить: $e')));
+                  return;
+                }
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: const Text('Сохранить',
@@ -408,7 +427,10 @@ _field(cReqs,
             style:
                 TextStyle(color: kGoldColor, fontFamily: 'monospace')),
         content: SizedBox(
-          width: 470,
+          // Форма не масштабируется в дизайне — считаем от реального экрана,
+          // иначе на телефоне диалог вылезает за края и «закрывается».
+          width: min(MediaQuery.of(ctx).size.width - 64, 470),
+          height: min(MediaQuery.of(ctx).size.height - 120, 560),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -606,7 +628,8 @@ _field(cReqs,
         title: const Text('Пачка предметов',
             style: TextStyle(color: kGoldColor)),
         content: SizedBox(
-          width: 420,
+          width: min(MediaQuery.of(ctx).size.width - 64, 420),
+          height: min(MediaQuery.of(ctx).size.height - 140, 420),
           child: ListenableBuilder(
             listenable: ItemDrafts.instance,
             builder: (context, _) => ItemDrafts.instance.items.isEmpty

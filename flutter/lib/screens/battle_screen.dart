@@ -212,13 +212,13 @@ class _BattleScreenState extends State<BattleScreen> {
   Color _logColor(BattleLogKind kind) {
     switch (kind) {
       case BattleLogKind.damage:
-        return const Color(0xFFFF8080);
+        return const Color(0xFFFF9248); // оранжевый удар — как в БК
       case BattleLogKind.block:
-        return const Color(0xFF80CCFF);
+        return const Color(0xFF80CCFF); // синий блок
       case BattleLogKind.dodge:
         return const Color(0xFFCCCCCC);
       case BattleLogKind.crit:
-        return const Color(0xFFFFD700);
+        return const Color(0xFFFFD700); // золото крита
       case BattleLogKind.result:
         return kGoldColor;
       case BattleLogKind.info:
@@ -497,15 +497,27 @@ class _BattleScreenState extends State<BattleScreen> {
         itemCount: log.length,
         itemBuilder: (context, i) {
           final entry = log[i];
+          // Как в БК: время зелёным слева, текст строки — цветной по типу события.
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 1),
-            child: Text(
-              entry.text,
-              style: TextStyle(
-                fontSize: 12,
-                color: _logColor(entry.kind),
-                height: 1.3,
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: '${logStamp(entry.time)} ',
+                    style: const TextStyle(
+                        fontSize: 11, color: Color(0xFF4CD964)),
+                  ),
+                  TextSpan(
+                    text: entry.text,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: _logColor(entry.kind),
+                    ),
+                  ),
+                ],
               ),
+              style: const TextStyle(height: 1.3),
             ),
           );
         },

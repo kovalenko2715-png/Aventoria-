@@ -369,6 +369,16 @@ class InventoryScreen extends StatelessWidget {
                         softWrap: true,
                         style: const TextStyle(
                             color: Colors.white, fontSize: 13)),
+                    // Лор предмета — курсивная строка отдельным блоком.
+                    if ((info['lore'] ?? '').toString().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text('📖 ${(info['lore'] ?? '').toString()}',
+                          softWrap: true,
+                          style: const TextStyle(
+                              color: Color(0xFFCCB088),
+                              fontSize: 12,
+                              fontStyle: FontStyle.italic)),
+                    ],
                     const SizedBox(height: 12),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,

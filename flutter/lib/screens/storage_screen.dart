@@ -171,6 +171,55 @@ class _StorageScreenState extends State<StorageScreen> {
     );
   }
 
+  Widget _cell(List<dynamic> storage, int index) {
+    final item = _cellOf(storage, index);
+    final qty = (item?['quantity'] as num?)?.toInt() ?? 1;
+    return GestureDetector(
+      onTap: item == null ? null : () => _showDetail(storage, index),
+      child: Container(
+        width: 64,
+        height: 76,
+        decoration: BoxDecoration(
+          border: Border.all(color: kGoldColor.withOpacity(0.4)),
+          borderRadius: BorderRadius.circular(8),
+          color: const Color(0x33221D18),
+        ),
+        padding: const EdgeInsets.all(3),
+        child: item == null
+            ? const Center(
+                child: Text('пусто',
+                    style: TextStyle(color: Color(0xFF808080), fontSize: 8)))
+            : Stack(
+                children: [
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    child: Text(item['name']?.toString() ?? '???',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 9)),
+                  ),
+                  Center(
+                    child: Text(item['icon']?.toString() ?? '📦',
+                        style: const TextStyle(fontSize: 24)),
+                  ),
+                  if (qty > 1)
+                    Positioned(
+                      bottom: 0,
+                      right: 2,
+                      child: Text('x$qty',
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 11)),
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final storage = _storage();
@@ -199,51 +248,16 @@ class _StorageScreenState extends State<StorageScreen> {
                 style: TextStyle(color: Color(0xFFB3B3B3))),
           ),
           Expanded(
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 6,
-                  crossAxisSpacing: 10,
-                  mainAxisSpacing: 10,
-                  childAspectRatio: 0.85),
-              padding: const EdgeInsets.all(8),
-              itemCount: _slots,
-              itemBuilder: (context, i) {
-                final item = _cellOf(storage, i);
-                return InkWell(
-                  onTap: item == null
-                      ? null
-                      : () => _showDetail(storage, i),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xE6262626),
-                      border: Border.all(
-                          color: kGoldColor.withOpacity(0.3)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    padding: const EdgeInsets.all(4),
-                    child: item == null
-                        ? const Center(
-                            child: Text('пусто',
-                                style: TextStyle(
-                                    color: Color(0xFF808080),
-                                    fontSize: 10)))
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(item['icon']?.toString() ?? '📦',
-                                  style: const TextStyle(fontSize: 28)),
-                              const SizedBox(height: 2),
-                              Text(item['name']?.toString() ?? '???',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                      color: kGoldColor, fontSize: 10)),
-                            ],
-                          ),
-                  ),
-                );
-              },
+            // Мелкие ячейки как в инвентаре (Компонент GridView растягивает
+            // ячейки во всю ширину — поэтому Wrap с фиксированным размером).
+            child: SingleChildScrollView(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (var i = 0; i < _slots; i++) _cell(storage, i),
+                ],
+              ),
             ),
           ),
         ],

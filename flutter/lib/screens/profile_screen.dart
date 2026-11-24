@@ -4,8 +4,6 @@ import '../data/game_data.dart';
 import '../main.dart';
 import '../services/combat_service.dart';
 import '../services/player_repository.dart';
-import '../services/resource_service.dart';
-import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 import '../widgets/doll_panel.dart';
 
@@ -119,31 +117,15 @@ class ProfileScreen extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 90,
-                  height: 120,
-                  margin: const EdgeInsets.only(right: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: kGoldColor, width: 2),
-                    borderRadius: BorderRadius.circular(8),
-                    color: const Color(0x33221D18),
-                  ),
-                  child: (data['look']?.toString() ?? '').isNotEmpty &&
-                          ResourceService.instance
-                                  .filePath(data['look'].toString()) !=
-                              null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: GameImage(data['look'].toString(),
-                              fit: BoxFit.cover),
-                        )
-                      : const Center(
-                          child: Text('🧍',
-                              style: TextStyle(
-                                  fontSize: 32,
-                                  color: Colors.white24)),
-                        ),
+                // Кукла слева вверху — та же, что в инвентаре, со всеми слотами шмота.
+                DollPanel(
+                  equipment: (data['equipment'] as Map<String, dynamic>?) ?? const {},
+                  look: data['look']?.toString() ?? '',
+                  dollWidth: 96,
+                  dollHeight: 132,
+                  slotSize: 26,
                 ),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Wrap(
                     runSpacing: 4,
@@ -157,16 +139,6 @@ class ProfileScreen extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 10),
-            sectionTitle('ШМОТ'),
-            const SizedBox(height: 4),
-            DollPanel(
-              equipment: (data['equipment'] as Map<String, dynamic>?) ?? const {},
-              look: data['look']?.toString() ?? '',
-              dollWidth: 96,
-              dollHeight: 132,
-              slotSize: 26,
             ),
             const SizedBox(height: 10),
             Row(
