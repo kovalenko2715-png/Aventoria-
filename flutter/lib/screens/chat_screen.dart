@@ -276,6 +276,9 @@ class _ChatScreenState extends State<ChatScreen>
         return msg['tab'] == 'personal' &&
             (msg['uid'] == me || msg['to_uid'] == me);
       }
+      // Общий чат — как в БК: видны сообщения из ВСЕХ вкладок (торговый,
+      // системные и т.д.), кроме личных. Вкладка — только своя лента.
+      if (_tab == 'general') return msg['tab'] != 'personal';
       return msg['tab'] == _tab;
     }).take(60).toList();
   }

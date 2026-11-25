@@ -1,19 +1,23 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
 import '../services/battle_engine.dart';
 import '../services/player_repository.dart';
+import '../services/pvp_service.dart';
 import '../widgets/module_window.dart';
 import 'battle_screen.dart';
+import 'pvp_battle_screen.dart';
 
-const _kColorWaiting = Color(0xFF4DCC4D);
-const _kColorFighting = Color(0xFFCC8033);
-const _kColorFinished = Color(0xFF808080);
-const _kColorPrivate = Color(0xFFCC9933);
-
-class ArenaScreen extends StatelessWidget {
+/// АРЕНА — как в БК: входишь в список бойцов, видишь кто стоит в арене,
+/// вызываешь на бой (можно с золотой ставкой), противник принимает/отклоняет.
+class ArenaScreen extends StatefulWidget {
   const ArenaScreen({super.key});
+
+  @override
+  State<ArenaScreen> createState() => _ArenaScreenState();
 
   static const MobDef _trainingDummy = MobDef(
     'arena_training',
@@ -30,275 +34,165 @@ class ArenaScreen extends StatelessWidget {
     expMin: 0,
     expMax: 0,
   );
+}
 
-  Future<void> _openTraining(BuildContext context) async {
-    await Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const BattleScreen(mob: _trainingDummy)));
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Вы хорошо потренировались!')));
+class _ArenaScreenState extends State<ArenaScreen> {
+  static const Map<String, int> _kBetOptions = <String, int>{
+    'Без ставки': 0,
+    '100 💰': 100,
+    '500 💰': 500,
+  };
+
+  final PvpService _pvp = PvpService.instance;
+  StreamSubscription? _outSub;
+  final Set<String> _handledChallenges = <String>{};
+
+  /// Защита от двойного пуша (задвоенный евент стрима).
+  bool battleActive = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Пока открыта арена — следим за своими вызовами: приняли / отклонили.
+    _outSub = _pvp.myOutgoingChallenges().listen(_onOutgoing);
   }
 
-  Future<void> _joinRoom(BuildContext context, String roomId,
-      Map<String, dynamic> room) async {
-    final player = PlayerRepository.instance;
-    final name = player.name;
-    final uid = player.uid;
-    if (uid == null) return;
-    final players = List<String>.from(room['players'] as List<dynamic>? ?? const []);
-    if (players.contains(name)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Вы уже в этой комнате!')));
+  @override
+  void dispose() {
+    _outSub?.cancel();
+    super.dispose();
+  }
+
+  void _onOutgoing(QuerySnapshot<Map<String, dynamic>> snap) {
+    for (final d in snap.docs) {
+      final c = d.data();
+      final status = c['status']?.toString() ?? '';
+      if (status == 'accepted' && _handledChallenges.add(d.id)) {
+        _startAcceptedBattle(c);
+        return;
+      }
+      if (status == 'declined' && _handledChallenges.add(d.id)) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '⚔️ ${c['to_name'] ?? 'Противник'} отклонил ваш вызов.')));
+      }
+    }
+  }
+
+  Future<void> _startAcceptedBattle(Map<String, dynamic> challenge) async {
+    if (battleActive) return;
+    battleActive = true;
+    final battleId = await _pvp.createBattle(challenge);
+    if (!mounted) return;
+    if (battleId == null) {
+      battleActive = false;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Не удалось создать аренный бой.')));
       return;
     }
-    if (players.length >= ((room['max_players'] as num?)?.toInt() ?? 2)) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Комната полна!')));
-      return;
-    }
-    final privacy = room['privacy']?.toString() ?? 'public';
-    if (privacy == 'private') {
-      final pinOk = await _askPin(context, room);
-      if (!pinOk) return;
-    }
-    final maxPlayers = (room['max_players'] as num?)?.toInt() ?? 2;
-    players.add(name);
-    final full = players.length >= maxPlayers;
-    final roomRef =
-        FirebaseFirestore.instance.collection('arena_rooms').doc(roomId);
-    await roomRef.update({
-      'players': players,
-      'status': full ? 'fighting' : room['status'] ?? 'waiting',
-    });
-    if (!context.mounted) return;
-    if (full) {
-      final opponent = players.firstWhere((p) => p != name, orElse: () => 'Противник');
-      final mob = MobDef(
-        'pvp_$roomId',
-        opponent,
-        '👤',
-        level: player.level,
-        hp: 200,
-        strength: 10,
-        agility: 8,
-        defense: 40,
-        attack: 80,
-        goldMin: 0,
-        goldMax: 0,
-        expMin: 0,
-        expMax: 0,
-      );
-      await Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => BattleScreen(mob: mob)));
-      await roomRef.update({'status': 'finished'});
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PvpBattleScreen(battleId: battleId)));
+    battleActive = false;
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _toggleArena() async {
+    if (_pvp.inArena) {
+      await _pvp.leaveArena();
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Вы вошли в комнату "${room['name']}"! Ожидаем других игроков...')));
+      await _pvp.enterArena();
     }
+    if (mounted) setState(() {});
   }
 
-  Future<bool> _askPin(BuildContext context, Map<String, dynamic> room) async {
-    final controller = TextEditingController();
-    final ok = await showDialog<bool>(
+  Future<void> _challenge(
+      BuildContext context, String toUid, Map<String, dynamic> doc) async {
+    final name = doc['name']?.toString() ?? '???';
+    final level = (doc['level'] as num?)?.toInt() ?? 1;
+    final rating = (doc['rating'] as num?)?.toInt() ?? 1000;
+    final myGold = PlayerRepository.instance.gold;
+    final picked = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF151515),
         shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
             side: BorderSide(color: kGoldColor.withOpacity(0.6))),
-        title: Text('Вход в комнату: "${room['name']}"',
+        title: Text('⚔️ Вызов: $name',
             style: const TextStyle(color: kGoldColor, fontSize: 16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('🔒', style: TextStyle(fontSize: 32)),
-            const Text('Введите PIN-код:',
-                style: TextStyle(color: Colors.white70)),
-            const SizedBox(height: 8),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              obscureText: true,
-              maxLength: 4,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(hintText: '****'),
-            ),
+            Text('Уровень: $level   Рейтинг: ⭐$rating',
+                style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            const SizedBox(height: 4),
+            Text('Ваше золото: 💰$myGold',
+                style: const TextStyle(color: kGoldColor, fontSize: 13)),
+            const SizedBox(height: 10),
+            const Text('Ставка (проигравший теряет её):',
+                style: TextStyle(color: Colors.white70, fontSize: 12)),
+            const SizedBox(height: 6),
+            for (final opt in _kBetOptions.keys)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(opt),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0x80FFD700)),
+                    backgroundColor: const Color(0xFF221D18),
+                    minimumSize: const Size(double.infinity, 40),
+                  ),
+                  child: Text(opt,
+                      style: const TextStyle(color: kGoldColor, fontSize: 13)),
+                ),
+              ),
           ],
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('ОТМЕНА')),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('ВОЙТИ', style: TextStyle(color: kGoldColor))),
+              onPressed: () => Navigator.of(ctx).pop(null),
+              child: const Text('ОТМЕНА',
+                  style: TextStyle(color: Colors.white54))),
         ],
       ),
     );
-    if (ok != true) return false;
-    if (controller.text.trim() != (room['pin']?.toString() ?? '')) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Неверный PIN-код!')));
-      }
-      return false;
+    if (picked == null || !context.mounted) return;
+    final bet = _kBetOptions[picked] ?? 0;
+    if (bet > 0 && myGold < bet) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Не хватает золота на такую ставку!')));
+      return;
     }
-    return true;
+    final id = await _pvp.challenge(toUid, doc, bet: bet);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(id == null
+            ? 'Не удалось отправить вызов.'
+            : '⚔️ Вызов отправлен $name (ставка: $picked). Ждём ответа...')));
   }
 
-  Future<void> _openCreate(BuildContext context) async {
-    final nameCtrl = TextEditingController();
-    final pinCtrl = TextEditingController();
-    String battleType = '1x1';
-    bool isPrivate = false;
-    final created = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialog) => AlertDialog(
-          backgroundColor: const Color(0xFF151515),
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: BorderSide(color: kGoldColor.withOpacity(0.6))),
-          title: const Text('СОЗДАНИЕ КОМНАТЫ',
-              style: TextStyle(color: kGoldColor, fontSize: 18)),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Название комнаты:',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
-                TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                        hintText: 'Введите название...')),
-                const SizedBox(height: 12),
-                const Text('Тип боя:',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Row(
-                  children: [
-                    for (final t in const ['1x1', '2x2', '3x3'])
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Radio<String>(
-                              value: t,
-                              groupValue: battleType,
-                              activeColor: kGoldColor,
-                              onChanged: (v) => setDialog(
-                                  () => battleType = v ?? '1x1')),
-                          Text(t,
-                              style: const TextStyle(color: Colors.white)),
-                        ],
-                      ),
-                  ],
-                ),
-                const Text('Тип комнаты:',
-                    style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Row(
-                  children: [
-                    Radio<bool>(
-                        value: false,
-                        groupValue: isPrivate,
-                        activeColor: kGoldColor,
-                        onChanged: (v) => setDialog(() => isPrivate = false)),
-                    const Text('Публичная',
-                        style: TextStyle(color: Colors.white)),
-                    const SizedBox(width: 12),
-                    Radio<bool>(
-                        value: true,
-                        groupValue: isPrivate,
-                        activeColor: kGoldColor,
-                        onChanged: (v) => setDialog(() => isPrivate = true)),
-                    const Text('Приватная',
-                        style: TextStyle(color: Colors.white)),
-                  ],
-                ),
-                if (isPrivate) ...[
-                  const Text('PIN-код (4 цифры):',
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
-                  TextField(
-                    controller: pinCtrl,
-                    obscureText: true,
-                    maxLength: 4,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(hintText: '****'),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('ОТМЕНА')),
-            TextButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child:
-                    const Text('СОЗДАТЬ', style: TextStyle(color: kGoldColor))),
-          ],
-        ),
-      ),
-    );
-    if (created != true || !context.mounted) return;
-
-    final roomName = nameCtrl.text.trim();
-    if (roomName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Введите название комнаты!')));
-      return;
-    }
-    final pinCode = pinCtrl.text.trim();
-    if (isPrivate &&
-        (pinCode.length != 4 || int.tryParse(pinCode) == null)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Введите корректный PIN-код (4 цифры)!')));
-      return;
-    }
-    final uid = PlayerRepository.instance.uid;
-    if (uid == null) return;
-    final maxPlayers =
-        battleType == '1x1' ? 2 : (battleType == '2x2' ? 4 : 6);
-    await FirebaseFirestore.instance.collection('arena_rooms').add({
-      'name': roomName,
-      'creator': PlayerRepository.instance.name,
-      'creator_uid': uid,
-      'type': battleType,
-      'privacy': isPrivate ? 'private' : 'public',
-      'pin': isPrivate ? pinCode : '',
-      'players': [PlayerRepository.instance.name],
-      'max_players': maxPlayers,
-      'status': 'waiting',
-      'created_at': FieldValue.serverTimestamp(),
-    });
+  Future<void> _openTraining(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => const BattleScreen(mob: ArenaScreen._trainingDummy)));
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Комната "$roomName" создана!')));
+        const SnackBar(content: Text('Вы хорошо потренировались!')));
   }
 
   @override
   Widget build(BuildContext context) {
+    final player = PlayerRepository.instance;
+    final inArena = _pvp.inArena;
+    final rating = _pvp.myRating;
+
     return ModuleWindow(
       title: '⚔️ АРЕНА ⚔️',
-      actions: [
-        Padding(
-          padding: const EdgeInsets.only(right: 8),
-          child: OutlinedButton(
-            onPressed: () => _openCreate(context),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: Color(0x80FFD700)),
-              backgroundColor: const Color(0xFF221D18),
-              minimumSize: const Size(200, 40),
-            ),
-            child: const Text('➕ СОЗДАТЬ КОМНАТУ',
-                style: TextStyle(color: kGoldColor, fontSize: 13)),
-          ),
-        ),
-      ],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Шапка: мой рейтинг + вход/выход из списка бойцов.
           Card(
             color: const Color(0xFF1F1A14),
             shape: RoundedRectangleBorder(
@@ -310,15 +204,64 @@ class ArenaScreen extends StatelessWidget {
                 children: [
                   const Padding(
                     padding: EdgeInsets.only(right: 12),
-                    child: Text('🎯', style: TextStyle(fontSize: 36)),
+                    child: Text('⭐', style: TextStyle(fontSize: 30)),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Рейтинг: $rating',
+                            style: const TextStyle(
+                                color: kGoldColor, fontSize: 15)),
+                        const SizedBox(height: 2),
+                        Text(
+                          inArena
+                              ? 'Вы стоите в списке бойцов арены'
+                              : 'Вы не в списке бойцов',
+                          style: TextStyle(
+                              color: inArena
+                                  ? const Color(0xFF4DCC4D)
+                                  : const Color(0xFFCCCCCC),
+                              fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  OutlinedButton(
+                    onPressed: _toggleArena,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Color(0x80FFD700)),
+                      backgroundColor: const Color(0xFF221D18),
+                      minimumSize: const Size(130, 38),
+                    ),
+                    child: Text(inArena ? 'ВЫЙТИ' : 'В АРЕНУ',
+                        style:
+                            const TextStyle(color: kGoldColor, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Тренировка с манекеном (как раньше).
+          Card(
+            color: const Color(0xFF1F1A14),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5),
+                side: BorderSide(color: kGoldColor.withOpacity(0.3))),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Row(
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(right: 12),
+                    child: Text('🎯', style: TextStyle(fontSize: 30)),
                   ),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('ТРЕНИРОВКА',
-                            style: TextStyle(
-                                color: kGoldColor, fontSize: 16)),
+                            style: TextStyle(color: kGoldColor, fontSize: 15)),
                         SizedBox(height: 2),
                         Text('Бой с манекеном. Проверьте свои силы!',
                             style: TextStyle(
@@ -343,47 +286,39 @@ class ArenaScreen extends StatelessWidget {
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 6),
             child: Center(
-              child: Text('АКТИВНЫЕ КОМНАТЫ',
-                  style: TextStyle(color: kGoldColor, fontSize: 16)),
+              child: Text('БОЙЦЫ В АРЕНЕ',
+                  style: TextStyle(color: kGoldColor, fontSize: 15)),
             ),
           ),
           Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: FirebaseFirestore.instance
-                  .collection('arena_rooms')
-                  .orderBy('created_at', descending: true)
-                  .snapshots(),
+            child: StreamBuilder<
+                List<MapEntry<String, Map<String, dynamic>>>>(
+              stream: _pvp.arenaPlayers(),
               builder: (context, snap) {
-                final docs = snap.data?.docs ?? const [];
-                if (docs.isEmpty) {
-                  return const Center(
-                    child: Text('Нет активных комнат.\nСоздайте свою!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: Color(0xFF999999), fontSize: 14)),
+                final players = (snap.data ?? const [])
+                    .where((e) => e.key != player.uid)
+                    .toList();
+                if (players.isEmpty) {
+                  return Center(
+                    child: Text(
+                      inArena
+                          ? 'Вы в списке. Ждите противника или вызовите его, когда он войдёт в арену.'
+                          : 'Никого нет в арене. Нажмите «В АРЕНУ», чтобы встать в список бойцов.',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Color(0xFF999999), fontSize: 12),
+                    ),
                   );
                 }
                 return ListView.builder(
-                  padding: const EdgeInsets.all(8),
-                  itemCount: docs.length,
+                  padding: const EdgeInsets.only(bottom: 8),
+                  itemCount: players.length,
                   itemBuilder: (context, i) {
-                    final room = docs[i].data();
-                    final roomId = docs[i].id;
-                    final status = room['status']?.toString() ?? 'waiting';
-                    final privacy = room['privacy']?.toString() ?? 'public';
-                    final players = (room['players'] as List<dynamic>? ?? const []);
-                    final maxPlayers =
-                        (room['max_players'] as num?)?.toInt() ?? 2;
-                    final statusIcon = status == 'waiting'
-                        ? '🟢'
-                        : status == 'fighting'
-                            ? '🟡'
-                            : '🔴';
-                    final statusColor = status == 'waiting'
-                        ? _kColorWaiting
-                        : status == 'fighting'
-                            ? _kColorFighting
-                            : _kColorFinished;
+                    final e = players[i];
+                    final doc = e.value;
+                    final name = doc['name']?.toString() ?? '???';
+                    final level = (doc['level'] as num?)?.toInt() ?? 1;
+                    final foeRating = (doc['rating'] as num?)?.toInt() ?? 1000;
                     return Card(
                       color: const Color(0xFF1F1A14),
                       shape: RoundedRectangleBorder(
@@ -391,72 +326,44 @@ class ArenaScreen extends StatelessWidget {
                           side: BorderSide(
                               color: kGoldColor.withOpacity(0.3))),
                       child: Padding(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
                         child: Row(
                           children: [
-                            Padding(
-                              padding: const EdgeInsets.only(right: 12),
-                              child: Text(
-                                  privacy == 'private' ? '🔒' : '🏠',
-                                  style: const TextStyle(fontSize: 32)),
+                            const Padding(
+                              padding: EdgeInsets.only(right: 10),
+                              child: Text('🧍',
+                                  style: TextStyle(fontSize: 24)),
                             ),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text('$statusIcon ${room['name'] ?? ''}',
-                                          style: TextStyle(
-                                              color: statusColor,
-                                              fontSize: 15)),
-                                      Text(' [${room['type'] ?? ''}]',
-                                          style: const TextStyle(
-                                              color: Color(0xFFB3B3B3),
-                                              fontSize: 12)),
-                                    ],
-                                  ),
-                                  Text(
-                                      '👤 Создатель: ${room['creator'] ?? '???'}',
+                                  Text(name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold)),
+                                  Text('Уровень $level   Рейтинг ⭐$foeRating',
                                       style: const TextStyle(
                                           color: Color(0xFFCCCCCC),
-                                          fontSize: 12)),
-                                  Text(
-                                      '👥 ${players.length}/$maxPlayers игроков',
-                                      style: const TextStyle(
-                                          color: Color(0xFFCCCCCC),
-                                          fontSize: 12)),
-                                  if (privacy == 'private')
-                                    const Text(
-                                        '🔒 Приватная комната (требуется PIN-код)',
-                                        style: TextStyle(
-                                            color: _kColorPrivate,
-                                            fontSize: 11)),
+                                          fontSize: 11)),
                                 ],
                               ),
                             ),
                             OutlinedButton(
-                              onPressed: status == 'waiting' &&
-                                      players.length < maxPlayers
-                                  ? () => _joinRoom(context, roomId, room)
-                                  : null,
+                              onPressed: () => _challenge(context, e.key, doc),
                               style: OutlinedButton.styleFrom(
                                 side: const BorderSide(
                                     color: Color(0x80FFD700)),
                                 backgroundColor: const Color(0xFF221D18),
-                                minimumSize: const Size(100, 35),
+                                minimumSize: const Size(100, 36),
                               ),
-                              child: Text(
-                                status == 'waiting'
-                                    ? (players.length < maxPlayers
-                                        ? 'ВОЙТИ'
-                                        : 'ПОЛНА')
-                                    : status == 'fighting'
-                                        ? 'В БОЮ'
-                                        : 'ЗАВЕРШЕНА',
-                                style: const TextStyle(
-                                    color: kGoldColor, fontSize: 12),
-                              ),
+                              child: const Text('⚔️ ВЫЗВАТЬ',
+                                  style: TextStyle(
+                                      color: kGoldColor, fontSize: 12)),
                             ),
                           ],
                         ),

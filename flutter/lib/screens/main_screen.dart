@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -8,6 +9,7 @@ import '../services/chat_service.dart';
 import '../services/item_drafts.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
+import '../services/pvp_service.dart';
 import '../widgets/game_image.dart';
 import '../widgets/nickname_dialog.dart';
 import 'admin_screen.dart';
@@ -23,6 +25,7 @@ import 'market_screen.dart';
 import 'map_screen.dart';
 import 'monster_select_screen.dart';
 import 'profile_screen.dart';
+import 'pvp_battle_screen.dart';
 import 'quests_screen.dart';
 import 'settings_screen.dart';
 import 'tavern_screen.dart';
@@ -45,6 +48,8 @@ class _MainScreenState extends State<MainScreen>
   Timer? _clockTimer;
   String _timeString = '';
   StreamSubscription<int>? _adminSub;
+  StreamSubscription? _challengeSub;
+  final Set<String> _shownChallenges = <String>{};
   late final AnimationController _runePulse;
 
   @override
@@ -57,6 +62,10 @@ class _MainScreenState extends State<MainScreen>
     _adminSub = ChatService.instance.adminRank().listen((r) {
       if (mounted && r != _adminRank) setState(() => _adminRank = r);
     });
+    // Входящие вызовы на арену — слушаем всегда (не только когда арена открыта).
+    _challengeSub = PvpService.instance
+        .incomingChallenges()
+        .listen(_onIncomingChallenges);
     _runePulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -71,9 +80,70 @@ class _MainScreenState extends State<MainScreen>
   void dispose() {
     _clockTimer?.cancel();
     _adminSub?.cancel();
+    _challengeSub?.cancel();
     _runePulse.dispose();
     ChatService.instance.stopHeartbeat();
     super.dispose();
+  }
+
+  Future<void> _onIncomingChallenges(
+      QuerySnapshot<Map<String, dynamic>> snap) async {
+    for (final d in snap.docs) {
+      if (!_shownChallenges.add(d.id)) continue;
+      if (!mounted) {
+        _shownChallenges.remove(d.id);
+        return;
+      }
+      final c = d.data();
+      final fromName = c['from_name']?.toString() ?? '???';
+      final fromLevel = (c['from_level'] as num?)?.toInt() ?? 1;
+      final bet = (c['bet'] as num?)?.toInt() ?? 0;
+      final accept = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: const Color(0xFF151515),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: kGoldColor.withOpacity(0.6))),
+          title: const Text('⚔️ ВЫЗОВ НА БОЙ!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: kGoldColor,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold)),
+          content: Text(
+            bet > 0
+                ? '$fromName (ур. $fromLevel) вызывает вас на арену!\n\nСтавка: 💰$bet (проигравший теряет её)'
+                : '$fromName (ур. $fromLevel) вызывает вас на арену!',
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(' ОТКАЗАТЬСЯ',
+                    style: TextStyle(color: Colors.redAccent))),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('⚔️ ПРИНЯТЬ',
+                    style: TextStyle(
+                        color: kGoldColor,
+                        fontWeight: FontWeight.bold))),
+          ],
+        ),
+      );
+      await PvpService.instance.respondChallenge(d.id, accept == true);
+      if (accept != true || !mounted) continue;
+      final battleId = await PvpService.instance.createBattle(c);
+      if (!mounted) break;
+      if (battleId != null) {
+        await Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => PvpBattleScreen(battleId: battleId)));
+      } else {
+        _lastMessage = 'Система: не удалось создать аренный бой.';
+        if (mounted) setState(() {});
+      }
+    }
   }
 
   void _updateClock() {
