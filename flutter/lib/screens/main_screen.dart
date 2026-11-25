@@ -9,7 +9,9 @@ import '../services/chat_service.dart';
 import '../services/item_drafts.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
+import '../services/push_notify.dart';
 import '../services/pvp_service.dart';
+import '../services/world_boss_service.dart';
 import '../widgets/game_image.dart';
 import '../widgets/nickname_dialog.dart';
 import 'admin_screen.dart';
@@ -50,6 +52,9 @@ class _MainScreenState extends State<MainScreen>
   StreamSubscription<int>? _adminSub;
   StreamSubscription? _challengeSub;
   final Set<String> _shownChallenges = <String>{};
+  Timer? _wbTimer;
+  List<MapEntry<String, Map<String, dynamic>>> _openWorldBosses = const [];
+  bool _bossBannerHidden = false;
   late final AnimationController _runePulse;
 
   @override
@@ -66,6 +71,10 @@ class _MainScreenState extends State<MainScreen>
     _challengeSub = PvpService.instance
         .incomingChallenges()
         .listen(_onIncomingChallenges);
+    // Мировые боссы: таймеры пробуждения + объявления в чат + плашка.
+    WorldBossService.instance.init();
+    _wbTick();
+    _wbTimer = Timer.periodic(const Duration(seconds: 30), (_) => _wbTick());
     _runePulse = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1800),
@@ -81,9 +90,30 @@ class _MainScreenState extends State<MainScreen>
     _clockTimer?.cancel();
     _adminSub?.cancel();
     _challengeSub?.cancel();
+    _wbTimer?.cancel();
     _runePulse.dispose();
     ChatService.instance.stopHeartbeat();
+    WorldBossService.instance.dispose();
     super.dispose();
+  }
+
+  void _wbTick() {
+    if (!mounted) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final open = <MapEntry<String, Map<String, dynamic>>>[
+      for (final id in WorldBossService.scheduleDefaults.keys)
+        if (WorldBossService.instance.isOpen(id, now: now))
+          MapEntry(
+              id,
+              WorldBossService.instance.bossDef(id) ??
+                  const <String, dynamic>{}),
+    ];
+    final changed = open.length != _openWorldBosses.length;
+    setState(() {
+      _openWorldBosses = open;
+      if (open.isNotEmpty && changed) _bossBannerHidden = false;
+    });
+    WorldBossService.instance.announceAwakens();
   }
 
   Future<void> _onIncomingChallenges(
@@ -199,6 +229,14 @@ class _MainScreenState extends State<MainScreen>
         await showNicknameDialog(context);
         await ChatService.instance.clearNickRequest();
       }
+    }
+    if (_player.isLoaded && _player.name.isNotEmpty) {
+      // Приветствие теперь пишется в чат (вкладка «Системные», видно и в «Общей»).      
+      ChatService.instance.systemOnce(
+          'hello_${DateTime.now().year}${DateTime.now().month}${DateTime.now().day}_${_player.name}',
+          '👋 ${_player.name} вошёл в игру. Добро пожаловать в Aventoria!');
+      // Планируем push-уведомления о пробуждении боссов (работают и при закрытой игре).
+      PushNotify.instance.scheduleBossWindows();
     }
     if (mounted) setState(() => _loading = false);
   }
@@ -326,6 +364,13 @@ class _MainScreenState extends State<MainScreen>
                   right: 0,
                   child: _topBar(),
                 ),
+                if (_openWorldBosses.isNotEmpty && !_bossBannerHidden)
+                  Positioned(
+                    left: w * 0.05,
+                    right: w * 0.05,
+                    top: 70,
+                    child: _worldBossBanner(),
+                  ),
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
@@ -370,6 +415,54 @@ class _MainScreenState extends State<MainScreen>
           },
         ),
       ],
+    );
+  }
+
+  String _wbCountdownLeft(MapEntry<String, Map<String, dynamic>> e) {
+    final left = WorldBossService.instance.untilClose(e.key);
+    final m = left.inMinutes;
+    return m >= 1 ? '$m мин' : '<1 мин';
+  }
+
+  Widget _worldBossBanner() {
+    return GestureDetector(
+      onTap: () => _openModule('Боссы'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xCC3A1005),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFFF6A00), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const Text('🔥', style: TextStyle(fontSize: 18)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _openWorldBosses
+                    .map((e) =>
+                        '${e.value['name'] ?? 'Босс'} — открыт ещё ${_wbCountdownLeft(e)}')
+                    .join(' • '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Color(0xFFFFD9A0),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
+              ),
+            ),
+            GestureDetector(
+              onTap: () => setState(() => _bossBannerHidden = true),
+              child: const Padding(
+                padding: EdgeInsets.only(left: 8),
+                child: Icon(Icons.close,
+                    size: 16, color: Colors.white54),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

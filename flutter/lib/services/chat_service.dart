@@ -138,6 +138,39 @@ class ChatService {
       .map((s) => s.docs.length)
       .handleError((_) => 0);
 
+  /// Системное сообщение в чат (видно во вкладке «Системные» и в «Общей»).
+  Future<void> sendSystem(String text, {String tab = 'system'}) async {
+    try {
+      await FirebaseFirestore.instance.collection('chat').add({
+        'uid': 'system',
+        'name': 'Система',
+        'level': 0,
+        'tab': tab,
+        'text': text,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
+  /// Одноразовое системное сообщение: ключ = часть id документа.
+  /// Повторные вызовы с тем же ключом НЕ дублируют сообщение — все клиенты
+  /// могут безопасно "кричать" об одном и том же событии.
+  Future<void> systemOnce(String key, String text, {String tab = 'system'}) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('chat')
+          .doc('sys_$key')
+          .set({
+        'uid': 'system',
+        'name': 'Система',
+        'level': 0,
+        'tab': tab,
+        'text': text,
+        'created_at': FieldValue.serverTimestamp(),
+      });
+    } catch (_) {}
+  }
+
   Stream<int> unreadCount() {
     final lastRead =
         (PlayerRepository.instance.data?['chat_last_read'] as num?)

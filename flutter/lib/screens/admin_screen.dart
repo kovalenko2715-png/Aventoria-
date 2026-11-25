@@ -11,6 +11,7 @@ import '../services/chat_service.dart';
 import '../services/github_publish_service.dart';
 import '../services/items_catalog.dart';
 import '../services/item_drafts.dart';
+import '../services/world_boss_service.dart';
 import '../widgets/game_image.dart';
 import '../widgets/module_window.dart';
 
@@ -840,6 +841,13 @@ _field(cReqs,
               const SizedBox(height: 6),
               _adminButton('📋 Список обликов (удалить)',
                   () => _showLooksListDialog(context)),
+              const SizedBox(height: 12),
+              const Text('🔥 МИРОВЫЕ БОССЫ',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              _adminButton('🔥 Принудительно открыть босса',
+                  () => _showWorldBossDialog(context)),
               if (rank >= 4) ...[
                 const SizedBox(height: 12),
                 const Text('АДМИНЫ И РАНГИ',
@@ -859,6 +867,101 @@ _field(cReqs,
             ],
           );
         },
+      ),
+    );
+  }
+
+  String _wbName(String id) {
+    final def = WorldBossService.instance.bossDef(id);
+    return def == null ? id : '${def['icon'] ?? '👹'} ${def['name']} (ур. ${def['level']})';
+  }
+
+  Future<void> _forceWorldBoss(
+      BuildContext context, String id, int minutes) async {
+    await FirebaseFirestore.instance
+        .collection('settings')
+        .doc('world_bosses')
+        .set(
+      {
+        'forced.$id': minutes > 0
+            ? DateTime.now().millisecondsSinceEpoch + minutes * 60000
+            : 0,
+      },
+      SetOptions(merge: true),
+    );
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(minutes > 0
+              ? 'Босс открыт на $minutes мин (объява появится в чате)'
+              : 'Принудительное открытие сброшено')));
+    }
+    if (minutes > 0) {
+      await WorldBossService.instance.announceAwakens();
+    }
+  }
+
+  Future<void> _showWorldBossDialog(BuildContext context) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        title: const Text('Мировые боссы',
+            style: TextStyle(color: kGoldColor)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final id in WorldBossService.scheduleDefaults.keys)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_wbName(id),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        ElevatedButton(
+                          style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFF3A1A05)),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _forceWorldBoss(context, id, 20);
+                          },
+                          child: const Text('Открыть 20 мин',
+                              style: TextStyle(
+                                  color: Colors.orangeAccent, fontSize: 12)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFF202020)),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _forceWorldBoss(context, id, 0);
+                          },
+                          child: const Text('Закрыть',
+                              style: TextStyle(
+                                  color: Colors.white54, fontSize: 12)),
+                        ),
+                      ]),
+                    ],
+                  ),
+                ),
+              const Text(
+                  '«Открыть» будит босса сразу на 20 минут, даже если по таймеру он ещё спит. Объявление появится в общем чате. «Закрыть» снимает принудительное открытие.',
+                  style: TextStyle(color: Colors.white38, fontSize: 11)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Закрыть окно',
+                  style: TextStyle(color: Colors.white54))),
+        ],
       ),
     );
   }
