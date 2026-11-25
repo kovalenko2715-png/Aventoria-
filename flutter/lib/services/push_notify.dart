@@ -64,6 +64,12 @@ class PushNotify {
                 channelDescription: 'Пробуждение мировых боссов',
                 importance: Importance.high,
                 priority: Priority.high,
+                playSound: true,
+                sound: const RawResourceAndroidNotificationSound('boss_alert'),
+                styleInformation: BigPictureStyleInformation(
+                  DrawableResourceAndroidBitmap('boss_push_banner'),
+                  largeIcon: DrawableResourceAndroidBitmap('boss_push_banner'),
+                ),
               ),
             ),
             androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,

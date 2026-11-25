@@ -85,6 +85,16 @@ class AudioManager {
     _playCurrentMenuTrack();
   }
 
+  /// Разовый звуковой эффект (не мешает музыке — отдельный плеер).
+  final AudioPlayer _sfxPlayer = AudioPlayer();
+
+  Future<void> playSfx(String asset, {double volume = 1.0}) async {
+    try {
+      await _sfxPlayer.stop();
+      await _sfxPlayer.play(_resolve(asset), volume: volume);
+    } catch (_) {}
+  }
+
   Future<void> setMusicEnabled(bool enabled) async {
     _enabled = enabled;
     await _player.setVolume(enabled ? _volume : 0.0);

@@ -5,7 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../main.dart';
+import '../services/audio_manager.dart';
 import '../services/chat_service.dart';
+import '../services/event_service.dart';
 import '../services/item_drafts.dart';
 import '../services/items_catalog.dart';
 import '../services/player_repository.dart';
@@ -55,6 +57,7 @@ class _MainScreenState extends State<MainScreen>
   Timer? _wbTimer;
   List<MapEntry<String, Map<String, dynamic>>> _openWorldBosses = const [];
   bool _bossBannerHidden = false;
+  List<Map<String, dynamic>> _activeEvents = const [];
   late final AnimationController _runePulse;
 
   @override
@@ -73,6 +76,7 @@ class _MainScreenState extends State<MainScreen>
         .listen(_onIncomingChallenges);
     // Мировые боссы: таймеры пробуждения + объявления в чат + плашка.
     WorldBossService.instance.init();
+    EventService.instance.init();
     _wbTick();
     _wbTimer = Timer.periodic(const Duration(seconds: 30), (_) => _wbTick());
     _runePulse = AnimationController(
@@ -94,26 +98,42 @@ class _MainScreenState extends State<MainScreen>
     _runePulse.dispose();
     ChatService.instance.stopHeartbeat();
     WorldBossService.instance.dispose();
+    EventService.instance.dispose();
     super.dispose();
   }
 
   void _wbTick() {
     if (!mounted) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = DateTime.now();
     final open = <MapEntry<String, Map<String, dynamic>>>[
       for (final id in WorldBossService.scheduleDefaults.keys)
-        if (WorldBossService.instance.isOpen(id, now: now))
+        if (WorldBossService.instance.isOpen(id, now: now.millisecondsSinceEpoch))
           MapEntry(
               id,
               WorldBossService.instance.bossDef(id) ??
                   const <String, dynamic>{}),
     ];
     final changed = open.length != _openWorldBosses.length;
+    final events = <Map<String, dynamic>>[
+      for (final id in EventService.eventDefs.keys)
+        if (EventService.instance.isActive(id, now: now))
+          {...EventService.eventDefs[id]!, 'id': id,
+           'left': EventService.instance.untilEnd(id, now: now)},
+    ];
+    final eventsChanged =
+        events.map((e) => e['id']).join(',') !=
+            _activeEvents.map((e) => e['id']).join(',');
     setState(() {
       _openWorldBosses = open;
+      _activeEvents = events;
       if (open.isNotEmpty && changed) _bossBannerHidden = false;
     });
+    // Рёв дракона, когда только открылся мирный босс (плашка видна).
+    if (open.isNotEmpty && changed && !_bossBannerHidden) {
+      AudioManager.instance.playSfx('audio/boss_roar.wav', volume: 0.9);
+    }
     WorldBossService.instance.announceAwakens();
+    EventService.instance.announceActive();
   }
 
   Future<void> _onIncomingChallenges(
@@ -371,6 +391,15 @@ class _MainScreenState extends State<MainScreen>
                     top: 70,
                     child: _worldBossBanner(),
                   ),
+                if (_activeEvents.isNotEmpty)
+                  Positioned(
+                    left: w * 0.05,
+                    right: w * 0.05,
+                    top: _openWorldBosses.isNotEmpty && !_bossBannerHidden
+                        ? 124
+                        : 70,
+                    child: _eventBanner(),
+                  ),
                 Positioned(
                   left: w * 0.05,
                   right: w * 0.05,
@@ -427,37 +456,86 @@ class _MainScreenState extends State<MainScreen>
   Widget _worldBossBanner() {
     return GestureDetector(
       onTap: () => _openModule('Боссы'),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: const Color(0xCC3A1005),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFFF6A00), width: 1.5),
-        ),
-        child: Row(
-          children: [
-            const Text('🔥', style: TextStyle(fontSize: 18)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                _openWorldBosses
-                    .map((e) =>
-                        '${e.value['name'] ?? 'Босс'} — открыт ещё ${_wbCountdownLeft(e)}')
-                    .join(' • '),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: Color(0xFFFFD9A0),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold),
-              ),
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/images/boss_banner.png',
+              height: 52,
+              width: double.infinity,
+              fit: BoxFit.cover,
             ),
-            GestureDetector(
+          ),
+          Positioned(
+            left: 10,
+            right: 30,
+            child: Text(
+              _openWorldBosses
+                  .map((e) =>
+                      '${e.value['name'] ?? 'Босс'} — открыт ещё ${_wbCountdownLeft(e)}')
+                  .join(' • '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                  color: Color(0xFFFFE6C8),
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(color: Colors.black, blurRadius: 4),
+                    Shadow(color: Colors.black, offset: Offset(1, 1)),
+                  ]),
+            ),
+          ),
+          Positioned(
+            right: 8,
+            top: 2,
+            bottom: 2,
+            child: GestureDetector(
               onTap: () => setState(() => _bossBannerHidden = true),
               child: const Padding(
                 padding: EdgeInsets.only(left: 8),
                 child: Icon(Icons.close,
-                    size: 16, color: Colors.white54),
+                    size: 16, color: Colors.white70),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _eventBanner() {
+    return GestureDetector(
+      onTap: () => _openModule('Боссы'),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xCC2A2005),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: kGoldColor, width: 1.5),
+        ),
+        child: Row(
+          children: [
+            const Text('📅', style: TextStyle(fontSize: 16)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _activeEvents
+                    .map((e) {
+                      final left = e['left'] as Duration?;
+                      final h = left?.inHours ?? 0;
+                      final m = (left?.inMinutes ?? 0) % 60;
+                      return '${e['emoji']} ${e['name']} — ${h > 0 ? '$h ч $m мин' : '$m мин'}';
+                    })
+                    .join(' • '),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: Color(0xFFFFEFA0),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold),
               ),
             ),
           ],

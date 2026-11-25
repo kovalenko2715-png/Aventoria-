@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import 'event_service.dart';
+
 class PlayerRepository extends ChangeNotifier {
   PlayerRepository._();
   static final PlayerRepository instance = PlayerRepository._();
@@ -277,27 +279,32 @@ extension BattleRewards on PlayerRepository {
     final db = FirebaseFirestore.instance;
     final ref = db.collection('users').doc(uid);
 
+    // Ивенты (выходные x2 опыт, час золота и т.д.) умножают награду.
+    final evMult = EventService.instance.multipliers();
+    final goldMult = (gold * evMult.gold).round();
+    final expMult = (exp * evMult.exp).round();
+
     final result = await db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final current = snap.data() ?? const {};
       final levelBefore = (current['level'] as num?)?.toInt() ?? 1;
       final oldExp = (current['exp'] as num?)?.toInt() ?? 0;
-      final newExp = oldExp + exp;
+      final newExp = oldExp + expMult;
       final levelAfter = 1 + newExp ~/ _expPerLevel;
       final statGain = levelAfter > levelBefore ? (levelAfter - levelBefore) * 3 : 0;
 
       tx.update(ref, {
-        'gold': FieldValue.increment(gold),
+        'gold': FieldValue.increment(goldMult),
         'exp': newExp,
         'level': levelAfter,
         'stat_points': FieldValue.increment(statGain),
         'stats_pvp.monsters': FieldValue.increment(victory ? 1 : 0),
-        'stats_pvp.earned': FieldValue.increment(gold),
+        'stats_pvp.earned': FieldValue.increment(goldMult),
       });
 
       return BattleRewardResult(
-        goldGained: gold,
-        expGained: exp,
+        goldGained: goldMult,
+        expGained: expMult,
         levelBefore: levelBefore,
         levelAfter: levelAfter,
         statPointsGained: statGain,
@@ -309,11 +316,11 @@ extension BattleRewards on PlayerRepository {
           _data!['stats_pvp'] as Map<String, dynamic>? ?? const {});
       stats['monsters'] =
           ((stats['monsters'] as num?)?.toInt() ?? 0) + (victory ? 1 : 0);
-      stats['earned'] = ((stats['earned'] as num?)?.toInt() ?? 0) + gold;
+      stats['earned'] = ((stats['earned'] as num?)?.toInt() ?? 0) + goldMult;
       applyData({
         ..._data!,
-        'gold': gold + ((_data!['gold'] as num?)?.toInt() ?? 0),
-        'exp': exp + ((_data!['exp'] as num?)?.toInt() ?? 0),
+        'gold': goldMult + ((_data!['gold'] as num?)?.toInt() ?? 0),
+        'exp': expMult + ((_data!['exp'] as num?)?.toInt() ?? 0),
         'level': result.levelAfter,
         'stat_points': ((_data!['stat_points'] as num?)?.toInt() ?? 0) +
             result.statPointsGained,

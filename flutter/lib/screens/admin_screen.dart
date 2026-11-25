@@ -9,6 +9,7 @@ import 'package:image_picker/image_picker.dart';
 import '../main.dart';
 import '../services/chat_service.dart';
 import '../services/github_publish_service.dart';
+import '../services/event_service.dart';
 import '../services/items_catalog.dart';
 import '../services/item_drafts.dart';
 import '../services/world_boss_service.dart';
@@ -848,6 +849,13 @@ _field(cReqs,
               const SizedBox(height: 6),
               _adminButton('🔥 Принудительно открыть босса',
                   () => _showWorldBossDialog(context)),
+              const SizedBox(height: 12),
+              const Text('📅 ИВЕНТЫ',
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              _adminButton('📅 Управление ивентами',
+                  () => _showEventsDialog(context)),
               if (rank >= 4) ...[
                 const SizedBox(height: 12),
                 const Text('АДМИНЫ И РАНГИ',
@@ -953,6 +961,129 @@ _field(cReqs,
               const Text(
                   '«Открыть» будит босса сразу на 20 минут, даже если по таймеру он ещё спит. Объявление появится в общем чате. «Закрыть» снимает принудительное открытие.',
                   style: TextStyle(color: Colors.white38, fontSize: 11)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Закрыть окно',
+                  style: TextStyle(color: Colors.white54))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _eventAction(BuildContext context, String keyBase,
+      Map<String, dynamic> docUpdate) async {
+    await FirebaseFirestore.instance
+        .collection('settings')
+        .doc('events')
+        .set(docUpdate, SetOptions(merge: true));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ивент обновлён: $keyBase')));
+    }
+    if (docUpdate.containsKey('forced')) {
+      await EventService.instance.announceActive();
+    }
+  }
+
+  Future<void> _showEventsDialog(BuildContext context) async {
+    final fmt = (DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}'
+        ' ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        title: const Text('Ивенты', style: TextStyle(color: kGoldColor)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final entry in EventService.eventDefs.entries)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${entry.value['emoji']} ${entry.value['name']}\n'
+                        '${EventService.instance.isActive(entry.key) ? '🔥 АКТИВЕН сейчас' : 'спит'}'
+                        '${EventService.instance.autoOff(entry.key) ? ' • автоматика ВЫКЛ' : ''}',
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12, height: 1.3),
+                      ),
+                      Builder(builder: (context) {
+                        final left = EventService.instance.untilEnd(entry.key);
+                        return left != null
+                            ? Text('осталось ${left.inMinutes} мин',
+                                style: const TextStyle(
+                                    color: Colors.white38, fontSize: 11))
+                            : const SizedBox.shrink();
+                      }),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          ElevatedButton(
+                            style: OutlinedButton.styleFrom(
+                                backgroundColor: const Color(0xFF2A2005)),
+                            onPressed: () => _eventAction(context, entry.key, {
+                              'forced.${entry.key}':
+                                  DateTime.now().millisecondsSinceEpoch +
+                                      3600000,
+                            }),
+                            child: const Text('Открыть 1 ч',
+                                style: TextStyle(
+                                    color: Colors.orangeAccent, fontSize: 11)),
+                          ),
+                          ElevatedButton(
+                            style: OutlinedButton.styleFrom(
+                                backgroundColor: const Color(0xFF202020)),
+                            onPressed: () => _eventAction(context, entry.key, {
+                              'forced.${entry.key}': 0,
+                            }),
+                            child: const Text('Снять форс',
+                                style: TextStyle(
+                                    color: Colors.white54, fontSize: 11)),
+                          ),
+                          ElevatedButton(
+                            style: OutlinedButton.styleFrom(
+                                backgroundColor: const Color(0xFF202020)),
+                            onPressed: () async {
+                              final nowOff =
+                                  EventService.instance.autoOff(entry.key);
+                              await FirebaseFirestore.instance
+                                  .collection('settings')
+                                  .doc('events')
+                                  .set({
+                                'off.${entry.key}': !nowOff,
+                              }, SetOptions(merge: true));
+                            },
+                            child: Text(
+                                EventService.instance.autoOff(entry.key)
+                                    ? 'Вкл авто'
+                                    : 'Откл авто',
+                                style: const TextStyle(
+                                    color: Colors.white70, fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              const Text(
+                  '«Открыть 1 ч» запускает событие вручную на час (объявление в чат). '
+                  '«Откл авто» отключает авто-расписание события (форс продолжает работать). '
+                  'Авто-расписание: выходные x2 опыт, час золота 21:00–22:00, '
+                  'Пасха, Хэллоуин 31.10–02.11, Новый год 30.12–02.01.',
+                  style: TextStyle(color: Colors.white38, fontSize: 11)),
+              Text('Локальное время устройства: ${fmt(DateTime.now())}',
+                  style: const TextStyle(color: Colors.white24, fontSize: 10)),
             ],
           ),
         ),

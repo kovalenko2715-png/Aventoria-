@@ -1,7 +1,7 @@
 name: aventoria
 description: Aventoria RPG — Flutter port of the Godot project.
 publish_to: "none"
-version: 1.0.25+26
+version: 1.0.26+27
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
@@ -35,4 +35,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo.png
+    - assets/images/boss_banner.png
+    - assets/audio/boss_roar.wav
 

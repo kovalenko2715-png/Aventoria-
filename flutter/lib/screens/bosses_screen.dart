@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../data/game_data.dart';
 import '../main.dart';
 import '../services/battle_engine.dart';
+import '../services/event_service.dart';
 import '../services/world_boss_service.dart';
 import '../widgets/mob_info_window.dart';
 import '../widgets/module_window.dart';
@@ -459,11 +460,19 @@ class _BossesScreenState extends State<BossesScreen> {
                     ],
                   ]),
                   _list([
+                    ..._eventsCalendarSection(),
+                    const SizedBox(height: 10),
+                    const Text('🎮 ИВЕНТОВЫЕ БОССЫ',
+                        style: TextStyle(
+                            color: kGoldColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13)),
+                    const SizedBox(height: 4),
                     if (activeEventBosses.isEmpty)
                       const Padding(
                         padding: EdgeInsets.all(16),
                         child: Text(
-                            'Сейчас нет активных событий. Ждите следующую дату!',
+                            'Сейчас нет активных событиевых боссов. Ждите следующую дату!',
                             style: TextStyle(
                                 color: Colors.white54, fontSize: 13)),
                       ),
@@ -471,7 +480,6 @@ class _BossesScreenState extends State<BossesScreen> {
                       _bossCard(context, e),
                       const SizedBox(height: 6),
                     ],
-                    const SizedBox(height: 10),
                     for (final e in inactiveEventBosses)
                       Opacity(
                         opacity: 0.45,
@@ -485,6 +493,66 @@ class _BossesScreenState extends State<BossesScreen> {
         ),
       ),
     );
+  }
+
+  String _twoDigits(int n) => n.toString().padLeft(2, '0');
+
+  List<Widget> _eventsCalendarSection() {
+    final items = EventService.instance.calendar(daysAhead: 40);
+    return [
+      const Text('📅 КАЛЕНДАРЬ ИВЕНТОВ',
+          style: TextStyle(
+              color: kGoldColor, fontWeight: FontWeight.bold, fontSize: 13)),
+      const SizedBox(height: 4),
+      const Text(
+          'Выходные x2 опыта и час золота (21:00–22:00) идут постоянно. Праздники автоматически.',
+          style: TextStyle(color: Colors.white38, fontSize: 11)),
+      const SizedBox(height: 6),
+      for (final it in items)
+        Container(
+          margin: const EdgeInsets.only(bottom: 6),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: it.active
+                ? const Color(0xCC2A2005)
+                : const Color(0xAA1A1508),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: it.active ? kGoldColor : Colors.white12, width: 1),
+          ),
+          child: Row(
+            children: [
+              Text(EventService.eventDefs[it.id]?['emoji'].toString() ?? '📅',
+                  style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${EventService.eventDefs[it.id]?['name'] ?? it.id}'
+                      '${it.active ? '  🔥 ИДЁТ' : ''}',
+                      style: TextStyle(
+                          color: it.active ? kGoldColor : Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      '${_twoDigits(it.start.day)}.${_twoDigits(it.start.month)} '
+                      '${_twoDigits(it.start.hour)}:${_twoDigits(it.start.minute)} '
+                      '— ${_twoDigits(it.end.day)}.${_twoDigits(it.end.month)} '
+                      '${_twoDigits(it.end.hour)}:${_twoDigits(it.end.minute)}\n'
+                      '${EventService.eventDefs[it.id]?['desc'] ?? ''}',
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 11, height: 1.25),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+    ];
   }
 
   Widget _list(List<Widget> children) {
