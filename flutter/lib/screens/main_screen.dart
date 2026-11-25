@@ -120,9 +120,6 @@ class _MainScreenState extends State<MainScreen>
           {...EventService.eventDefs[id]!, 'id': id,
            'left': EventService.instance.untilEnd(id, now: now)},
     ];
-    final eventsChanged =
-        events.map((e) => e['id']).join(',') !=
-            _activeEvents.map((e) => e['id']).join(',');
     setState(() {
       _openWorldBosses = open;
       _activeEvents = events;
