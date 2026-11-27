@@ -373,7 +373,7 @@ class _MainScreenState extends State<MainScreen>
       fit: StackFit.expand,
       children: [
         GameImage(
-          _isDay ? 'images/day1.png' : 'images/day2.png',
+          _isDay ? 'images/Day1.png' : 'images/Day2.png',
           fit: BoxFit.cover,
         ),
         LayoutBuilder(
