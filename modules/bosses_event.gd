@@ -712,11 +712,43 @@ func _get_boss_lore(boss_id: String) -> String:
 	return lore_dict.get(boss_id, "История этого босса окутана тайной. Многие пытались победить его, но никто не вернулся живым.")
 
 func _show_message(text: String):
-	var dialog = AcceptDialog.new()
-	dialog.title = "Событийные боссы"
-	dialog.dialog_text = text
-	add_child(dialog)
-	dialog.popup_centered.call_deferred()
+	# Компактное уведомление сверху экрана вместо огромного диалогового окна
+	var toast = Panel.new()
+	toast.z_index = 200
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.anchor_left = 0.3
+	toast.anchor_right = 0.7
+	toast.anchor_top = 0.05
+	toast.anchor_bottom = 0.13
+	
+	var style = StyleBoxFlat.new()
+	style.bg_color = Color(0.1, 0.08, 0.06, 0.95)
+	style.border_color = Color(1, 0.84, 0, 0.8)
+	style.border_width_left = 1
+	style.border_width_right = 1
+	style.border_width_top = 1
+	style.border_width_bottom = 1
+	style.corner_radius_top_left = 6
+	style.corner_radius_top_right = 6
+	style.corner_radius_bottom_left = 6
+	style.corner_radius_bottom_right = 6
+	toast.add_theme_stylebox_override("panel", style)
+	
+	var lbl = Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.horizontal_alignment = 1
+	lbl.vertical_alignment = 1
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	toast.add_child(lbl)
+	
+	add_child(toast)
+	
+	var tw = create_tween()
+	tw.tween_interval(2.5)
+	tw.tween_property(toast, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(toast.queue_free)
 
 func _on_player_data_updated(new_data: Dictionary):
 	player_data = new_data.duplicate(true)
