@@ -458,11 +458,20 @@ class _MainScreenState extends State<MainScreen>
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.asset(
-              'assets/images/boss_banner.png',
+            child: Container(
               height: 52,
               width: double.infinity,
-              fit: BoxFit.cover,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    Color(0xFF3A1500),
+                    Color(0xFF7A2E00),
+                    Color(0xFF3A1500),
+                  ],
+                ),
+              ),
             ),
           ),
           Positioned(

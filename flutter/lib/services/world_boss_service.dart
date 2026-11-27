@@ -125,7 +125,7 @@ class WorldBossService {
       final minsLeft = ((e - now) / 60000).ceil();
       await ChatService.instance.systemOnce(
         'wb_${id}_$s',
-        '🔥 ПРОБУДИЛСЯ МИРОВОЙ БОСС: ${def['name']} (ур. ${def['level']})! '
+        '🔥 ${def['name']} ПРОБУДИЛСЯ! (ур. ${def['level']}) '
             '${def['location_name'] ?? ''}. Открыт ещё $minsLeft мин — успей вступить!',
       );
     }
