@@ -424,9 +424,17 @@ func _update_bosses_state():
 				avail["available"] = true
 				avail["expires_at"] = current_time + boss["available_duration"]
 				changed = true
+					_announce_boss(boss_id)
 	
 	if changed:
 		save_boss_availability()
+
+func _announce_boss(boss_id: String):
+	var boss = bosses_db[boss_id]
+	var text = boss["icon"] + " " + boss["name"] + " пробудился в локации \"" + boss["location_name"] + "\"!"
+	
+	if NetworkManager:
+		NetworkManager.data_received.emit("CHAT_MSG|Система|system|" + tex
 
 func _convert_boss_drops(boss_drops: Array) -> Array:
 	var result = []

@@ -8,6 +8,7 @@ var purchased_rumors = []
 var update_timer = null
 
 var event_ended_bosses = []
+var announced_event_bosses = []
 
 var bosses_db = {
 	"pumpkin_king": {
@@ -447,7 +448,17 @@ func create_boss_card(boss_id: String, boss: Dictionary) -> Panel:
 	return card
 
 func _update_event_status():
-	update_bosses_list()
+	var changed = false
+	for boss_id in bosses_db:
+		var boss = bosses_db[boss_id]
+		if is_event_active(boss) and not (boss_id in announced_event_bosses):
+			announced_event_bosses.append(boss_id)
+			var text = boss["icon"] + " " + boss["name"] + " пробудился в локации \"" + boss["location_name"] + "\"! Ивент активен!"
+			if NetworkManager:
+				NetworkManager.data_received.emit("CHAT_MSG|Система|system|" + text)
+			changed = true
+	if changed or true:
+		update_bosses_list()
 
 func _convert_event_drops(boss_drops: Array) -> Array:
 	var result = []
