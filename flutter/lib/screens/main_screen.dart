@@ -55,6 +55,7 @@ class _MainScreenState extends State<MainScreen>
   StreamSubscription? _challengeSub;
   final Set<String> _shownChallenges = <String>{};
   Timer? _wbTimer;
+  Timer? _bannerHideTimer;
   List<MapEntry<String, Map<String, dynamic>>> _openWorldBosses = const [];
   bool _bossBannerHidden = false;
   List<Map<String, dynamic>> _activeEvents = const [];
@@ -95,6 +96,7 @@ class _MainScreenState extends State<MainScreen>
     _adminSub?.cancel();
     _challengeSub?.cancel();
     _wbTimer?.cancel();
+    _bannerHideTimer?.cancel();
     _runePulse.dispose();
     ChatService.instance.stopHeartbeat();
     WorldBossService.instance.dispose();
@@ -128,6 +130,11 @@ class _MainScreenState extends State<MainScreen>
     // Рёв дракона, когда только открылся мирный босс (плашка видна).
     if (open.isNotEmpty && changed && !_bossBannerHidden) {
       AudioManager.instance.playSfx('audio/boss_roar.wav', volume: 0.9);
+      // Плашка сама исчезает через 45 секунд после объявления.
+      _bannerHideTimer?.cancel();
+      _bannerHideTimer = Timer(const Duration(seconds: 45), () {
+        if (mounted) setState(() => _bossBannerHidden = true);
+      });
     }
     WorldBossService.instance.announceAwakens();
     EventService.instance.announceActive();
@@ -393,7 +400,7 @@ class _MainScreenState extends State<MainScreen>
                     left: w * 0.05,
                     right: w * 0.05,
                     top: _openWorldBosses.isNotEmpty && !_bossBannerHidden
-                        ? 124
+                        ? 108
                         : 70,
                     child: _eventBanner(),
                   ),
@@ -459,7 +466,7 @@ class _MainScreenState extends State<MainScreen>
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              height: 52,
+              height: 36,
               width: double.infinity,
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -486,7 +493,7 @@ class _MainScreenState extends State<MainScreen>
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   color: Color(0xFFFFE6C8),
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: FontWeight.bold,
                   shadows: [
                     Shadow(color: Colors.black, blurRadius: 4),
