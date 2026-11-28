@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -577,7 +578,7 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
               ]),
               const SizedBox(height: 6),
               const Text(
-                  'Пустое поле = не менять. С минусом отнимает: −500 убавит 500 золота. Уровень ставится точно.',
+                  'Пустое поле = не менять. С минусом отнимает: −500 убавит 500 золота. Уровень ставится точно. Пустые почта и имя = выдать себе (удобно для тестов).',
                   style: TextStyle(color: Colors.white24, fontSize: 11)),
             ]),
           ),
@@ -590,7 +591,15 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
           TextButton(
             onPressed: () async {
               try {
-                final doc = await userByQuery(cEmail.text, cName.text);
+                final self = cEmail.text.trim().isEmpty &&
+                    cName.text.trim().isEmpty;
+                final doc = self
+                    ? await FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(FirebaseAuth.instance.currentUser?.uid ?? '')
+                        .get()
+                    : await userByQuery(cEmail.text, cName.text);
+                if (!doc.exists) throw Exception('Игрок не найден');
                 final data = <String, dynamic>{};
                 final g = int.tryParse(cGold.text.trim());
                 if (g != null && g != 0) data['gold'] = FieldValue.increment(g);
@@ -836,10 +845,11 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
                       ]);
                     }),
                 const SizedBox(height: 6),
-                _field(cReqs,
-                    'Требования (напр. strength:5,agility:3)'),
+                _statEditor(
+                    'ТРЕБОВАНИЯ — какой герой может надеть (0 = без требований)',
+                    cReqs, _reqStats),
                 const SizedBox(height: 6),
-                _field(cBonus, 'Бонусы (напр. attack:12,crit_chance:2)'),
+                _statEditor('БОНУСЫ — что даёт предмет', cBonus, _bonusStats),
                 const SizedBox(height: 6),
                 _field(cDesc, 'Описание и лор'),
                 const SizedBox(height: 8),
@@ -1138,13 +1148,13 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
                   style: TextStyle(
                       color: Colors.white, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              _adminButton('➕ Создать предмет',
+              _adminButton('➕ Создать предмет (сразу в игру, уйдёт в GitHub при наличии токена)',
                   () => _showItemForm(context)),
               const SizedBox(height: 6),
               _adminButton('📝 Изменить предмет по ID / выкинуть картинку',
                   () => _showPickItemDialog(context)),
               const SizedBox(height: 6),
-              _adminButton('💰 Выдать игроку золото / руны / опыт / уровень',
+              _adminButton('💰 Выдать золото / руны / опыт / уровень (пустые почта и имя = себе)',
                   () => _showGrantDialog(context)),
               const SizedBox(height: 12),
               const Text('📦 ПАЧКА НА GITHUB (создание пачкой + картинки)',
