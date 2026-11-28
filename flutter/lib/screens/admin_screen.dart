@@ -455,12 +455,12 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
   ];
 
   int _statValue(String text, String key) {
-    final m = RegExp(key + r's*:s*(-?d+)').firstMatch(text);
+    final m = RegExp(key + r'\s*:\s*(-?\d+)').firstMatch(text);
     return m == null ? 0 : int.parse(m.group(1)!);
   }
 
   void _setStatValue(TextEditingController c, String key, int v) {
-    final re = RegExp(key + r's*:s*(-?d+)');
+    final re = RegExp(key + r'\s*:\s*(-?\d+)');
     final m = re.firstMatch(c.text);
     String next;
     if (m != null) {
