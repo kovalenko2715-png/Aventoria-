@@ -428,8 +428,7 @@ _statEditor('ТРЕБОВАНИЯ — какой герой может наде�
       newBody = body.replaceRange(
           entryStart, end2 + 1, entry.substring(0, entry.length - 1));
     } else {
-      newBody = '
-  ' + entry.substring(0, entry.length - 1) + ',' + body;
+      newBody = '\n  ' + entry.substring(0, entry.length - 1) + ',' + body;
     }
     return src.replaceRange(openBrace + 1, closeIdx, newBody);
   }

@@ -122,8 +122,7 @@ class GithubPublishService {
       throw Exception('GitHub: чтение ' + getRes.statusCode.toString());
     }
     final body = jsonDecode(getRes.body) as Map<String, dynamic>;
-    final content = (body['content'] as String? ?? '').replaceAll('
-', '');
+    final content = (body['content'] as String? ?? '').replaceAll('\n', '');
     return utf8.decode(base64.decode(content));
   }
 
