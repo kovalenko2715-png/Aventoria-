@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -227,10 +228,10 @@ class AdminScreen extends StatelessWidget {
                 const SizedBox(height: 6),
                                 const SizedBox(height: 2),
                 _buildTwoHandedCheck(cType, cSlot, cTwoHanded),
-_field(cReqs,
-                    'Требования (напр. strength:5,agility:3)'),
+_statEditor('ТРЕБОВАНИЯ — какой герой может надеть (0 = без требований)',
+                    cReqs, _reqStats),
                 const SizedBox(height: 6),
-                _field(cBonus, 'Бонусы (напр. attack:12,crit_chance:2)'),
+                _statEditor('БОНУСЫ — что даёт предмет', cBonus, _bonusStats),
                 const SizedBox(height: 6),
                 _field(cDesc, 'Описание и лор'),
                 const SizedBox(height: 8),
@@ -316,6 +317,27 @@ _field(cReqs,
                       content: Text('Не удалось сохранить: $e')));
                   return;
                 }
+                final syncMsg = await _syncGameData([
+                  {
+                    'id': id,
+                    'fields': fields,
+                    'shop': cShop.value,
+                    'shopFields': {
+                      'name': fields['name'],
+                      'icon': fields['icon'],
+                      if (cShop.value)
+                        'price_gold': int.tryParse(cPriceGold.text.trim()) ?? 0,
+                      if (cShop.value)
+                        'price_rune': int.tryParse(cPriceRune.text.trim()) ?? 0,
+                    },
+                  }
+                ]);
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(syncMsg == null
+                          ? 'Сохранено (в game_data.dart не отправлено — нужен токен GitHub)'
+                          : 'Сохранено. ' + syncMsg!)));
+                }
                 if (ctx.mounted) Navigator.pop(ctx);
               },
               child: const Text('Сохранить',
@@ -330,6 +352,280 @@ _field(cReqs,
     final kb = bytes / 1024;
     if (kb >= 1024) return '${(kb / 1024).toStringAsFixed(1)} МБ';
     return '${kb.toStringAsFixed(0)} КБ';
+  }
+
+  // ─── СИНХРОНИЗАЦИЯ ПРЕДМЕТОВ В game_data.dart (GITHUB) ───
+
+  /// Обновляет itemDb (+shopItems) в flutter/lib/data/game_data.dart в репо.
+  /// null = не отправлено (нет токена / нет изменений / ошибка).
+  Future<String?> _syncGameData(List<Map<String, dynamic>> items) async {
+    final gh = GithubPublishService.instance;
+    if (!await gh.hasToken()) return null;
+    const path = 'flutter/lib/data/game_data.dart';
+    try {
+      final src = await gh.readText(path);
+      var out = src;
+      var changed = 0;
+      for (final it in items) {
+        final id = it['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        final before = out;
+        out = _upsertMapEntry(out, 'itemDb', id,
+            Map<String, dynamic>.from(it['fields'] as Map));
+        if (it['shop'] == true) {
+          out = _upsertMapEntry(out, 'shopItems', id,
+              Map<String, dynamic>.from(it['shopFields'] as Map));
+        }
+        if (out != before) changed++;
+      }
+      if (changed == 0 || out == src) return null;
+      final err = await gh.writeText(
+          path, out, 'Aventoria: обновить game_data ($changed предм.)');
+      return err == null ? 'game_data.dart обновлён на GitHub.' : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Вставляет или заменяет запись id внутри карты mapName в исходнике.
+  String _upsertMapEntry(String src, String mapName, String id,
+      Map<String, dynamic> fields) {
+    final mapStart = src.indexOf("final Map<String, dynamic> " + mapName + " = {");
+    if (mapStart < 0) return src;
+    final openBrace = src.indexOf('{', mapStart);
+    var depth = 0;
+    var closeIdx = -1;
+    for (var i = openBrace; i < src.length; i++) {
+      if (src[i] == '{') depth++;
+      if (src[i] == '}') {
+        depth--;
+        if (depth == 0) {
+          closeIdx = i;
+          break;
+        }
+      }
+    }
+    if (closeIdx < 0) return src;
+    final body = src.substring(openBrace + 1, closeIdx);
+    final entry = '"' + id + '": ' + jsonEncode(fields) + ',';
+    final entryStart = body.indexOf('"' + id + '": {');
+    String newBody;
+    if (entryStart >= 0) {
+      final eOpen = body.indexOf('{', entryStart);
+      var d2 = 0;
+      var end2 = -1;
+      for (var i = eOpen; i < body.length; i++) {
+        if (body[i] == '{') d2++;
+        if (body[i] == '}') {
+          d2--;
+          if (d2 == 0) {
+            end2 = i;
+            break;
+          }
+        }
+      }
+      if (end2 < 0) return src;
+      newBody = body.replaceRange(
+          entryStart, end2 + 1, entry.substring(0, entry.length - 1));
+    } else {
+      newBody = '
+  ' + entry.substring(0, entry.length - 1) + ',' + body;
+    }
+    return src.replaceRange(openBrace + 1, closeIdx, newBody);
+  }
+
+  // ─── ПРОСТОЙ РЕДАКТОР СТАТОВ ───
+
+  static const List<List<String>> _reqStats = [
+    ['strength', '💪 Сила'],
+    ['agility', '🏹 Ловкость'],
+    ['intuition', '🔮 Интуиция'],
+    ['endurance', '🛡 Выносливость'],
+    ['intellect', '📚 Интеллект'],
+    ['wisdom', '🦉 Мудрость'],
+    ['spirit', '✨ Дух'],
+  ];
+  static const List<List<String>> _bonusStats = [
+    ['attack', '⚔️ Атака'],
+    ['defense', '🛡 Защита'],
+    ['hp', '❤️ HP (жизни)'],
+    ['crit_chance', '💥 Шанс крита, %'],
+    ['evasion', '💨 Уклонение, %'],
+    ['hp_restore', '🧪 Восстановление HP'],
+  ];
+
+  int _statValue(String text, String key) {
+    final m = RegExp(key + r's*:s*(-?d+)').firstMatch(text);
+    return m == null ? 0 : int.parse(m.group(1)!);
+  }
+
+  void _setStatValue(TextEditingController c, String key, int v) {
+    final re = RegExp(key + r's*:s*(-?d+)');
+    final m = re.firstMatch(c.text);
+    String next;
+    if (m != null) {
+      next = c.text.replaceRange(m.start, m.end, key + ':' + v.toString());
+    } else if (v != 0) {
+      next = c.text.trim().isEmpty
+          ? key + ':' + v.toString()
+          : c.text.trim() + ',' + key + ':' + v.toString();
+    } else {
+      return;
+    }
+    c.value = TextEditingValue(
+        text: next,
+        selection: TextSelection.collapsed(offset: next.length));
+  }
+
+  /// Список статов с кнопками − / значение / + / +10.
+  /// Пишет в тот же контроллер (key:value через запятую) — данные совместимы.
+  Widget _statEditor(
+      String title, TextEditingController c, List<List<String>> stats) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        const SizedBox(height: 2),
+        for (final s in stats)
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: c,
+            builder: (context, _, __) {
+              final v = _statValue(c.text, s[0]);
+              return Row(children: [
+                Expanded(
+                    child: Text(s[1],
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12))),
+                IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.remove_circle_outline,
+                        size: 18, color: Colors.white38),
+                    onPressed:
+                        v <= 0 ? null : () => _setStatValue(c, s[0], v - 1)),
+                SizedBox(
+                    width: 34,
+                    child: Text(v.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                            color: kGoldColor,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold))),
+                IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.add_circle_outline,
+                        size: 18, color: kGoldColor),
+                    onPressed: () => _setStatValue(c, s[0], v + 1)),
+                SizedBox(
+                    width: 40,
+                    child: TextButton(
+                        style: TextButton.styleFrom(
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(30, 30)),
+                        onPressed: () => _setStatValue(c, s[0], v + 10),
+                        child: const Text('+10',
+                            style: TextStyle(
+                                color: Colors.white38, fontSize: 10)))),
+              ]);
+            },
+          ),
+      ],
+    );
+  }
+
+  // ─── ВЫДАЧА РЕСУРСОВ ИГРОКУ (ДЛЯ ТЕСТОВ) ───
+
+  Future<void> _showGrantDialog(BuildContext context) async {
+    final cEmail = TextEditingController();
+    final cName = TextEditingController();
+    final cGold = TextEditingController();
+    final cRune = TextEditingController();
+    final cExp = TextEditingController();
+    final cLevel = TextEditingController();
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151515),
+        title: const Text('Выдать игроку (тесты)',
+            style: TextStyle(color: kGoldColor, fontSize: 16)),
+        content: SizedBox(
+          width: min(MediaQuery.of(ctx).size.width - 64, 400),
+          child: SingleChildScrollView(
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              _field(cEmail, 'Почта игрока (или имя ниже)'),
+              const SizedBox(height: 6),
+              _field(cName, 'Имя игрока'),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(
+                    child: _field(cGold, 'Золото +/−',
+                        keyboard: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _field(cRune, 'Руны +/−',
+                        keyboard: TextInputType.number)),
+              ]),
+              const SizedBox(height: 6),
+              Row(children: [
+                Expanded(
+                    child: _field(cExp, 'Опыт +/−',
+                        keyboard: TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: _field(cLevel, 'Уровень (точно)',
+                        keyboard: TextInputType.number)),
+              ]),
+              const SizedBox(height: 6),
+              const Text(
+                  'Пустое поле = не менять. С минусом отнимает: −500 убавит 500 золота. Уровень ставится точно.',
+                  style: TextStyle(color: Colors.white24, fontSize: 11)),
+            ]),
+          ),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child:
+                  const Text('Отмена', style: TextStyle(color: Colors.white54))),
+          TextButton(
+            onPressed: () async {
+              try {
+                final doc = await userByQuery(cEmail.text, cName.text);
+                final data = <String, dynamic>{};
+                final g = int.tryParse(cGold.text.trim());
+                if (g != null && g != 0) data['gold'] = FieldValue.increment(g);
+                final ru = int.tryParse(cRune.text.trim());
+                if (ru != null && ru != 0) data['rune'] = FieldValue.increment(ru);
+                final ex = int.tryParse(cExp.text.trim());
+                if (ex != null && ex != 0) data['exp'] = FieldValue.increment(ex);
+                final lvl = int.tryParse(cLevel.text.trim());
+                if (lvl != null && lvl > 0) data['level'] = lvl;
+                if (data.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('Нечего выдавать — все поля пустые')));
+                  return;
+                }
+                await doc.reference.update(data);
+                final who = doc.data()?['name']?.toString() ?? 'игроку';
+                if (ctx.mounted) Navigator.pop(ctx);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Выдано: ' + who)));
+                }
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text('Ошибка: ' + e.toString())));
+                }
+              }
+            },
+            child: const Text('Выдать',
+                style:
+                    TextStyle(color: kGoldColor, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _showTokenDialog(BuildContext context) async {
@@ -758,18 +1054,57 @@ _field(cReqs,
     }
     var ok = 0, failed = 0;
     String lastErr = '';
+    final payloads = <Map<String, dynamic>>[];
     for (final d in all) {
       try {
         await _publishDraft(context, d);
         ok++;
+        final hasImage = d.imagePath != null && d.imagePath!.isNotEmpty;
+        final iconValue = hasImage
+            ? 'images/items/' + d.id + '.png'
+            : (d.icon.isEmpty ? '📤' : d.icon);
+        final fields = <String, dynamic>{
+          'name': d.name.isEmpty ? d.id : d.name,
+          'icon': iconValue,
+          'type': d.type,
+          'level': d.level,
+          'price': d.price,
+          'description': d.description,
+          'requirements': d.requirements,
+          'bonuses': d.bonuses,
+          'durability': d.type == 'consumable' ? -1 : 100,
+          if (d.type == 'equipment' && d.slot != null) 'slot': d.slot,
+          if (d.type == 'equipment' && d.twoHanded) 'two_handed': true,
+        };
+        payloads.add({
+          'id': d.id,
+          'fields': fields,
+          'shop': d.shop,
+          'shopFields': {
+            'name': d.name.isEmpty ? d.id : d.name,
+            'icon': iconValue,
+            'type': d.type,
+            'level': d.level,
+            'description': d.description,
+            'durability': d.type == 'consumable' ? -1 : 100,
+            'price_gold': d.priceGold,
+            'price_rune': d.priceRune,
+            'rarity': 'обычный',
+            'requirements': d.requirements,
+            'bonuses': d.bonuses,
+          },
+        });
       } catch (e) {
         failed++;
         lastErr = '$e';
       }
     }
+    final syncMsg =
+        payloads.isEmpty ? null : await _syncGameData(payloads);
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('Отправлено: $ok, ошибок: $failed. $lastErr')));
+          content: Text('Отправлено: $ok, ошибок: $failed. $lastErr'
+              + (syncMsg == null ? '' : ' ' + syncMsg!))));
     }
   }
 
@@ -808,6 +1143,9 @@ _field(cReqs,
               const SizedBox(height: 6),
               _adminButton('📝 Изменить предмет по ID / выкинуть картинку',
                   () => _showPickItemDialog(context)),
+              const SizedBox(height: 6),
+              _adminButton('💰 Выдать игроку золото / руны / опыт / уровень',
+                  () => _showGrantDialog(context)),
               const SizedBox(height: 12),
               const Text('📦 ПАЧКА НА GITHUB (создание пачкой + картинки)',
                   style: TextStyle(

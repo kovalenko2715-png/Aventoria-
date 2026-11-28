@@ -109,4 +109,28 @@ class GithubPublishService {
   Future<List<int>?> compressImage(File src, {int maxSide = 256}) {
     return compute(_compressImageIsolate, src.path);
   }
+
+  /// Читает текстовый файл из репозитория (нужен токен).
+  /// Кидает исключение при ошибке.
+  Future<String> readText(String repoPath) async {
+    final tok = await token();
+    if (tok == null || tok.isEmpty) throw Exception('Нет токена GitHub');
+    final getRes = await http
+        .get(_api(repoPath).replace(queryParameters: {'ref': branch}),
+            headers: _headers())
+        .timeout(const Duration(seconds: 30));
+    if (getRes.statusCode != 200) {
+      throw Exception('GitHub: чтение ' + getRes.statusCode.toString());
+    }
+    final body = jsonDecode(getRes.body) as Map<String, dynamic>;
+    final content = (body['content'] as String? ?? '').replaceAll('
+', '');
+    return utf8.decode(base64.decode(content));
+  }
+
+  /// Пишет текстовый файл с перезаписью. Возвращает null при успехе.
+  Future<String?> writeText(
+      String repoPath, String content, String commitMessage) async {
+    return uploadFile(repoPath, utf8.encode(content), commitMessage);
+  }
 }
