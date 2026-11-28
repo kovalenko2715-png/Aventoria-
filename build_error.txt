@@ -1,0 +1,67 @@
+
+Running Gradle task 'assembleRelease'...                        
+Warning: The plugin flutter_plugin_android_lifecycle requires Android SDK version 35 or higher.
+For more information about build configuration, see https://flutter.dev/to/review-gradle-config.
+Your project is configured to compile against Android SDK 34, but the following plugin(s) require to be compiled against a higher Android SDK version:
+- flutter_plugin_android_lifecycle compiles against Android SDK 35
+Fix this issue by compiling against the highest Android SDK version (they are backward compatible).
+Add the following to /home/runner/work/Aventoria-/Aventoria-/flutter/android/app/build.gradle:
+
+    android {
+        compileSdk = 35
+        ...
+    }
+
+lib/screens/admin_screen.dart:160:18: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          width: min(MediaQuery.of(ctx).size.width - 64, 470),
+                 ^^^
+lib/screens/admin_screen.dart:161:19: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          height: min(MediaQuery.of(ctx).size.height - 120, 560),
+                  ^^^
+lib/screens/admin_screen.dart:551:18: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          width: min(MediaQuery.of(ctx).size.width - 64, 400),
+                 ^^^
+lib/screens/admin_screen.dart:737:18: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          width: min(MediaQuery.of(ctx).size.width - 64, 470),
+                 ^^^
+lib/screens/admin_screen.dart:738:19: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          height: min(MediaQuery.of(ctx).size.height - 120, 560),
+                  ^^^
+lib/screens/admin_screen.dart:937:18: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          width: min(MediaQuery.of(ctx).size.width - 64, 420),
+                 ^^^
+lib/screens/admin_screen.dart:938:19: Error: The method 'min' isn't defined for the class 'AdminScreen'.
+ - 'AdminScreen' is from 'package:aventoria/screens/admin_screen.dart' ('lib/screens/admin_screen.dart').
+Try correcting the name to the name of an existing method, or defining a method named 'min'.
+          height: min(MediaQuery.of(ctx).size.height - 140, 420),
+                  ^^^
+Target kernel_snapshot_program failed: Exception
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileFlutterBuildRelease'.
+> Process 'command '/opt/hostedtoolcache/flutter/stable-3.24.5-x64/flutter/bin/flutter'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 11s
+Running Gradle task 'assembleRelease'...                           11.8s
+Gradle task assembleRelease failed with exit code 1
