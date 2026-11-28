@@ -202,7 +202,7 @@ class _AuthScreenState extends State<AuthScreen> {
 
   // ─── UI-ассеты ───
 
-  Widget _uiAsset(String name, Widget fallback, {BoxFit fit = BoxFit.fill}) {
+  Widget _uiAsset(String name, Widget fallback, {BoxFit fit = BoxFit.contain}) {
     return Image.asset('assets/images/ui/$name',
         fit: fit, errorBuilder: (_, __, ___) => fallback);
   }
@@ -276,7 +276,7 @@ class _AuthScreenState extends State<AuthScreen> {
         final focused = focus.hasFocus;
         final state = error ? 'red' : (focused ? 'blue' : 'gold');
         return SizedBox(
-          height: 46,
+          height: 52,
           child: Stack(
             children: [
               Positioned.fill(
