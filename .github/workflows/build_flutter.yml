@@ -41,6 +41,19 @@ jobs:
         run: flutter build apk --release
         working-directory: flutter
 
+      - name: Dump build error log
+        if: failure()
+        run: |
+          cd flutter
+          flutter build apk --release > build_full.log 2>&1 || true
+          tail -120 build_full.log > ../build_error.txt || true
+          cd ..
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add build_error.txt || true
+          git commit -m "ci: build error log [skip ci]" || true
+          git push origin HEAD:vibe/flutter-port-a0bddf || true
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
