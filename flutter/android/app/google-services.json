@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "537996136107",
+    "project_id": "aventoria-84f57",
+    "storage_bucket": "aventoria-84f57.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:537996136107:android:c7070bc8c91968d802f1ee",
+        "android_client_info": {
+          "package_name": "Xdd.sssss.myapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "537996136107-rg9796a0nlhf821np8obp6son8t9vqpj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6ZpSYpQFIhA0fu9P713oVMdngfvM-BMI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "537996136107-rg9796a0nlhf821np8obp6son8t9vqpj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:537996136107:android:694a6b34a94e9cfd02f1ee",
+        "android_client_info": {
+          "package_name": "com.aventoria.game"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "537996136107-8jk0mso7ngrapjgu3tiqg90gpijhh8dk.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aventoria.game",
+            "certificate_hash": "e6d6fda3f441e06609be5961fdc8be24636eddca"
+          }
+        },
+        {
+          "client_id": "537996136107-rg9796a0nlhf821np8obp6son8t9vqpj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA6ZpSYpQFIhA0fu9P713oVMdngfvM-BMI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "537996136107-rg9796a0nlhf821np8obp6son8t9vqpj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

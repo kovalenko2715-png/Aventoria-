@@ -1,0 +1,109 @@
+name: Build APK
+
+on:
+  push:
+    branches: ["main", "vibe/flutter-port-a0bddf"]
+    paths:
+      - "flutter/**"
+      - ".github/workflows/build_flutter.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.24.5
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+        working-directory: flutter
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings || true
+        working-directory: flutter
+
+      - name: Build release APK
+        run: flutter build apk --release
+        working-directory: flutter
+
+      - name: Dump build error log
+        if: failure()
+        run: |
+          cd flutter
+          flutter build apk --release > build_full.log 2>&1 || true
+          tail -120 build_full.log > ../build_error.txt || true
+          cd ..
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add build_error.txt || true
+          git commit -m "ci: build error log [skip ci]" || true
+          git push origin HEAD:vibe/flutter-port-a0bddf || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aventoria-apk
+          path: flutter/build/app/outputs/flutter-apk/app-release.apk
+      - name: Build debug APK
+        run: flutter build apk --debug
+        working-directory: flutter
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: aventoria-apk-debug
+          path: flutter/build/app/outputs/flutter-apk/app-debug.apk
+
+      - name: Pack game resources
+        run: |
+          cd flutter/assets
+          zip -qr /home/runner/aventoria-resources.zip audio images
+          RES_VER=$(unzip -pv /home/runner/aventoria-resources.zip | md5sum | cut -c1-10)
+          printf 'res-%s' "$RES_VER" > /home/runner/resources-version.txt
+
+      - name: Upload game resources artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aventoria-resources
+          path: |
+            /home/runner/aventoria-resources.zip
+            /home/runner/resources-version.txt
+
+      - name: Publish release APK to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VER=$(grep '^version:' flutter/pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          TAG="v$VER"
+          NOTES=$(printf 'Сборка #%s (%s)\ncommit: %s' "$GITHUB_RUN_NUMBER" "$GITHUB_SHA" "$GITHUB_SHA")
+          APK=flutter/build/app/outputs/flutter-apk/app-release.apk
+          if gh release create "$TAG" "$APK" /home/runner/aventoria-resources.zip /home/runner/resources-version.txt \
+            --title "Aventoria $TAG" --notes "$NOTES"; then
+            echo "Новый релиз $TAG"
+          else
+            gh release upload "$TAG" "$APK" /home/runner/aventoria-resources.zip /home/runner/resources-version.txt --clobber
+            OLD_COMMIT=$(gh release view "$TAG" --json body -q .body | grep -o 'commit: [0-9a-f]*' | head -1 | cut -d' ' -f2 || true)
+            if [ -n "$OLD_COMMIT" ] && [ "$OLD_COMMIT" != "$GITHUB_SHA" ]; then
+              CODE_CHANGED=$(git diff --name-only "$OLD_COMMIT" "$GITHUB_SHA" -- flutter/lib flutter/android flutter/pubspec.yaml | wc -l)
+              if [ "$CODE_CHANGED" -gt 0 ]; then
+                BODY=$(gh release view "$TAG" --json body -q .body)
+                gh release edit "$TAG" --notes "$(printf '%s\n\n⚠️ ВНИМАНИЕ: в этой сборке изменился КОД игры, но версия в pubspec не поднята — игроки НЕ получат APK! Подними version: и пересобери.' "$BODY")"
+                echo "::warning::Code changed but pubspec version not bumped — clients will not see the APK update"
+              fi
+            fi
+          fi
